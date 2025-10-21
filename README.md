@@ -1,1 +1,2 @@
 # Hope-Epicure
+#EventRift-Client
