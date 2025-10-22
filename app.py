@@ -23,7 +23,9 @@ def create_app():
     api.init_app(app)
     jwt.init_app(app)
 
-    # Register API routes (will be added in Phase 2)
+    # Register API routes 
+    from app.routes.user_routes import initialize_user_routes
+    initialize_user_routes(api)
     # from app.routes.user_routes import initialize_user_routes
     # initialize_user_routes(api)
 
