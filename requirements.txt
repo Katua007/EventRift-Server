@@ -1,0 +1,9 @@
+Flask
+Flask-RESTful
+Flask-SQLAlchemy
+Flask-Migrate
+psycopg2-binary # PostgreSQL adapter
+marshmallow
+python-dotenv
+Flask-JWT-Extended
+gunicorn # For deployment
