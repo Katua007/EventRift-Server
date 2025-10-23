@@ -5,6 +5,7 @@ from flask_restful import Api
 # Import all necessary route blueprints
 from app.routes.payments_routes import payments_bp 
 from app.routes.ticket_routes import ticket_bp
+from app.routes.stall_routes import stall_bp # <-- NEW IMPORT
 # Assuming you have a user blueprint:
 # from app.routes.user_routes import user_bp 
 
@@ -25,10 +26,13 @@ def create_app():
     # Example for API resources (if you're using Flask-RESTful with blueprints directly)
     # app.register_blueprint(user_bp, url_prefix='/api/users') 
     
-    # Register the payments blueprint (M-Pesa Daraja API)
+    # Register the payments blueprint (M-Pesa Daraja API for tickets)
     app.register_blueprint(payments_bp, url_prefix='/api/payments') 
 
     # Register the new ticket blueprint (Ticket/Attendance Logic)
     app.register_blueprint(ticket_bp, url_prefix='/api/tickets')
+
+    # Register the new stall blueprint (Stall Booking/Payment Logic) <-- NEW REGISTRATION
+    app.register_blueprint(stall_bp, url_prefix='/api/stalls')
 
     return app
