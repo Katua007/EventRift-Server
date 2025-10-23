@@ -25,7 +25,9 @@ def create_app():
 
     # Register API routes 
     from app.routes.user_routes import initialize_user_routes
+    from app.routes.event_routes import initialize_event_routes # New Import
     initialize_user_routes(api)
+    initialize_event_routes(api) # New registration
     # from app.routes.user_routes import initialize_user_routes
     # initialize_user_routes(api)
 
