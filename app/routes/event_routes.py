@@ -2,13 +2,14 @@ from flask import Blueprint, request
 from flask_restful import Resource, Api
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from marshmallow import ValidationError
-from datetime import datetime # Import datetime for filtering active events
-from sqlalchemy import or_ # Import or_ for complex filtering
-
-from app.schemas.event_schema import event_schema, events_schema # Import the list schema
-from app.models.event import Event # Import the Event model
-from app.decorators import requires_roles 
+from datetime import datetime
+import json # Used to parse JSON data if sent in a 'data' form field
 from app.extensions import db # Assuming db is initialized here or passed via extensions
+
+from app.schemas.event_schema import event_schema, events_schema
+from app.models.event import Event
+from app.decorators import requires_roles 
+from app.utils.cloudinary_upload import upload_event_image # <-- Cloudinary Utility
 
 # Create a Blueprint for event routes
 events_bp = Blueprint('events_bp', __name__)
@@ -20,18 +21,12 @@ class EventListResource(Resource):
     def get(self):
         """Returns a list of active (published, future-dated) events."""
         try:
-            # 1. Define 'Active' criteria: 
-            #    - is_published must be True
-            #    - date_time must be in the future (greater than current datetime)
-            
             current_time = datetime.utcnow()
-            
             active_events = Event.query.filter(
                 Event.is_published == True,
                 Event.date_time > current_time
             ).order_by(Event.date_time.asc()).all()
             
-            # 2. Serialize the list of events using the many=True schema instance
             result = events_schema.dump(active_events)
             
             return {
@@ -44,29 +39,65 @@ class EventListResource(Resource):
             print(f"Error fetching active events: {e}")
             return {"success": False, "message": "An unexpected error occurred while fetching events."}, 500
 
-    # BE-204: POST /api/events (Organizer Required)
+    # BE-204 & BE-301: POST /api/events (Organizer Required)
     @jwt_required()
     @requires_roles('Organizer') 
     def post(self):
-        """Creates a new event (Organizer role required)."""
+        """Creates a new event, handling optional Cloudinary image upload."""
         
         current_user_id = get_jwt_identity()
-        json_data = request.get_json()
-        if not json_data:
-            return {'message': 'No input data provided'}, 400
+
+        # --- 1. Identify Data Source ---
+        # request.files contains the uploaded image file (if any).
+        # request.form contains non-file data for multipart/form-data requests.
+        # request.get_json() contains data for application/json requests.
+        
+        image_file = request.files.get('image')
+        event_data = {}
+        
+        # Priority 1: Check request.form (for multipart/form-data)
+        if request.form:
+            # Check if event details are sent as a JSON string in a 'data' field
+            if 'data' in request.form:
+                try:
+                    event_data.update(json.loads(request.form['data']))
+                except json.JSONDecodeError:
+                    return {'message': 'Invalid JSON data provided in the form field.'}, 400
+            else:
+                 # If not in 'data', assume simple form fields hold event properties
+                event_data.update(request.form)
+                
+        # Priority 2: Check JSON body (if no form data or file was uploaded)
+        elif request.is_json:
+            event_data.update(request.get_json()) 
+
+        if not event_data:
+            return {'message': 'No event data provided.'}, 400
+
+        # --- 2. Cloudinary Upload (BE-301) ---
+        image_url = None
+        if image_file:
+            # Upload the image and get the secure URL
+            image_url = upload_event_image(image_file)
+            
+            if not image_url:
+                # If upload failed, stop the process and notify the user
+                return {"success": False, "message": "Image upload failed. Check Cloudinary settings or file format."}, 500
+        
+        # Inject the resulting URL into the data for Marshmallow validation
+        event_data['image_url'] = image_url 
 
         try:
-            # 1. Validate and deserialize input data
-            validated_data = event_schema.load(json_data)
+            # --- 3. Validate and Deserialize (BE-204) ---
+            validated_data = event_schema.load(event_data)
             
-            # 2. Create Event instance and set organizer_id
+            # --- 4. Create and Save Event ---
             new_event = Event(**validated_data)
             new_event.organizer_id = current_user_id 
             
-            # 3. Save the new event to the database
             new_event.save() 
             
-            # 4. Serialize the created object and return response
+            # --- 5. Return Response ---
             result = event_schema.dump(new_event)
             return {
                 "success": True, 
@@ -75,6 +106,7 @@ class EventListResource(Resource):
             }, 201
 
         except ValidationError as err:
+            # Database saving hasn't happened yet, so no cleanup needed.
             return {"success": False, "errors": err.messages}, 422
             
         except Exception as e:

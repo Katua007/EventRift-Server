@@ -7,3 +7,6 @@ marshmallow
 python-dotenv
 Flask-JWT-Extended
 gunicorn # For deployment
+# Dependencies for Cloudinary Image Integration (BE-301)
+cloudinary
+python-dotenv
