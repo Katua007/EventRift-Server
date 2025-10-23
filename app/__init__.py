@@ -1,10 +1,12 @@
-# ... existing imports ...
 from flask import Flask
 from flask_restful import Api
 # ... other imports for db, migrate, jwt ...
 
-# Import the new payments blueprint
+# Import all necessary route blueprints
 from app.routes.payments_routes import payments_bp 
+from app.routes.ticket_routes import ticket_bp
+# Assuming you have a user blueprint:
+# from app.routes.user_routes import user_bp 
 
 # Initialize Flask extensions outside create_app if they need to be globally accessible
 # (e.g., db, migrate, jwt)
@@ -19,11 +21,14 @@ def create_app():
     # jwt.init_app(app)
     
     # Register blueprints/routes
+    
     # Example for API resources (if you're using Flask-RESTful with blueprints directly)
-    # from app.routes.user_routes import user_bp 
     # app.register_blueprint(user_bp, url_prefix='/api/users') 
     
-    # Register the payments blueprint
-    app.register_blueprint(payments_bp, url_prefix='/api/payments') # All payments routes will start with /api/payments
+    # Register the payments blueprint (M-Pesa Daraja API)
+    app.register_blueprint(payments_bp, url_prefix='/api/payments') 
+
+    # Register the new ticket blueprint (Ticket/Attendance Logic)
+    app.register_blueprint(ticket_bp, url_prefix='/api/tickets')
 
     return app
