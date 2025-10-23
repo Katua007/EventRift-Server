@@ -16,22 +16,33 @@ class Config:
     # Other Configs
     SECRET_KEY = os.environ.get('SECRET_KEY', 'another-default-secret')
 
-    # Safaricom Daraja API Configuration (M-Pesa)
-# --- Base URLs ---
-MPESA_BASE_URL = os.environ.get('MPESA_BASE_URL', 'https://sandbox.safaricom.co.ke')
+# =========================================================================
+# --- Safaricom Daraja API Global Configuration ---
+# These constants are used by utility files (daraja_api.py, routes) via direct import.
+# =========================================================================
 
-# --- Credentials & Keys (REPLACE WITH YOUR OWN VALUES) ---
+# --- Base Credentials & Keys (Shared) ---
+MPESA_BASE_URL = os.environ.get('MPESA_BASE_URL', 'https://sandbox.safaricom.co.ke')
 CONSUMER_KEY = os.environ.get('MPESA_CONSUMER_KEY', 'YOUR_CONSUMER_KEY_HERE')
 CONSUMER_SECRET = os.environ.get('MPESA_CONSUMER_SECRET', 'YOUR_CONSUMER_SECRET_HERE')
-
-# Short Code and Passkey for Lipa Na M-Pesa Online (STK Push)
 BUSINESS_SHORT_CODE = os.environ.get('MPESA_BUSINESS_SHORT_CODE', '174379') 
 LNM_PASSKEY = os.environ.get('MPESA_LNM_PASSKEY', 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919') 
+TRANSACTION_TYPE = 'CustomerPayBillOnline' # Used for STK Push
 
-# --- Endpoints & Settings ---
-# IMPORTANT: This MUST be a publicly accessible URL for Safaricom to reach.
-# Use ngrok or your deployed domain during development.
-CALLBACK_URL = os.environ.get('MPESA_CALLBACK_URL', 'https://your-ngrok-or-domain.com/api/payments/callback') 
-ACCOUNT_REFERENCE = 'EventRiftTicketPurchase' 
-TRANSACTION_DESC = 'Ticket Purchase'
-TRANSACTION_TYPE = 'CustomerPayBillOnline'
+# --- TICKET Payment Settings (Used primarily by payments_routes.py) ---
+# Callback URL for M-Pesa to reach the /api/payments/callback endpoint
+TICKET_CALLBACK_URL = os.environ.get('MPESA_TICKET_CALLBACK_URL', 'https://your-domain.com/api/payments/callback') 
+TICKET_ACCOUNT_REFERENCE = 'EventRiftTicketPurchase' 
+TICKET_TRANSACTION_DESC = 'Ticket Purchase'
+
+# --- STALL Payment Settings (Used by stall_routes.py) ---
+# Callback URL for M-Pesa to reach the /api/stalls/callback endpoint
+STALL_CALLBACK_URL = os.environ.get('MPESA_STALL_CALLBACK_URL', 'https://your-domain.com/api/stalls/callback')
+STALL_ACCOUNT_REFERENCE = 'EventRiftStallBooking'
+STALL_TRANSACTION_DESC = 'Stall Booking Payment'
+
+# --- Backwards Compatibility Aliases ---
+# The original Daraja utility files expected these generic names. We alias them to the TICKET settings.
+CALLBACK_URL = TICKET_CALLBACK_URL
+ACCOUNT_REFERENCE = TICKET_ACCOUNT_REFERENCE
+TRANSACTION_DESC = TICKET_TRANSACTION_DESC
