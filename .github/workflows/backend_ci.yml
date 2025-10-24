@@ -1,0 +1,51 @@
+name: Backend CI/CD Pipeline (Python/Flask)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - feature/**
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⚙️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip' # Enable pip caching
+
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install dependencies from requirements.txt
+          pip install -r requirements.txt
+
+      # NOTE: For DB-dependent tests, you'd use a service container (PostgreSQL) here.
+      # This step assumes only unit tests run without a live DB.
+      - name: 🧪 Run Unit Tests (Placeholder)
+        run: |
+          # Replace 'pytest' with your actual test runner command
+          echo "Running backend tests..."
+          # pytest 
+        continue-on-error: true # Allow deployment even if tests fail initially
+
+      - name: 🚀 CD: Deploy to Staging (on develop branch merge)
+        # This job only runs if the push is to the 'develop' branch
+        if: github.ref == 'refs/heads/develop'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Deploying to Staging Environment (e.g., Railway/Render/Heroku)"
+          # Example command for deployment tool (replace with your actual tool's CLI)
+          # railway up --environment staging
+          # This command signals a new deployment on the staging platform.

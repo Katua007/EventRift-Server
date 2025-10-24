@@ -1,4 +1,4 @@
-#!/home/cyril-katua/Documents/Development/EventRift-Server/venv/bin/python3
+#!/home/cyril-katua/Documents/Development/EventRift-Server/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

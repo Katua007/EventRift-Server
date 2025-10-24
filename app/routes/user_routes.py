@@ -10,6 +10,7 @@ from flask_jwt_extended import get_jwt
 from app.models.user import User
 from app.app import db # Import db instance
 from app.utils.email_service import send_verification_email # NEW IMPORT
+from flasgger.utils import swag_from # Recommended for external YAML files, but simple docstring works
 
 def role_required(role):
     def wrapper(fn):
@@ -36,6 +37,54 @@ class Login(Resource):
             return {'message': 'Login successful', 'access_token': access_token, 'user_role': user.role}, 200
         
         return {'message': 'Invalid credentials'}, 401
+    
+class LoginResource(Resource):
+    def post(self):
+        """
+        User Login Endpoint (Returns JWT Token)
+        ---
+        tags:
+          - Authentication
+        parameters:
+          - in: body
+            name: body
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  example: organizer@example.com
+                password:
+                  type: string
+                  example: password123
+        responses:
+          200:
+            description: Login successful, returns access token.
+            schema:
+              type: object
+              properties:
+                access_token:
+                  type: string
+                role:
+                  type: string
+          401:
+            description: Invalid credentials.
+        """
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+
+        user = User.query.filter_by(email=email).first()
+
+        if user and user.check_password(password):
+            # Create token with identity and claims (role)
+            access_token = create_access_token(identity=user.id, additional_claims={'role': user.role})
+            return {'access_token': access_token, 'role': user.role}, 200
+        
+        return {'message': 'Invalid email or password'}, 401
 
 class Protected(Resource):
     @jwt_required()
