@@ -7,6 +7,7 @@ import json # Used to parse JSON data if sent in a 'data' form field
 from app.extensions import db # Assuming db is initialized here or passed via extensions
 
 from app.schemas.event_schema import event_schema, events_schema
+from app.schemas.pagination_schema import pagination_schema
 from app.models.event import Event
 from app.decorators import requires_roles 
 from app.utils.cloudinary_upload import upload_event_image # <-- Cloudinary Utility
@@ -17,27 +18,33 @@ api = Api(events_bp)
 
 class EventListResource(Resource):
     
-    # BE-205: GET /api/events (Publicly Accessible)
     def get(self):
-        """Returns a list of active (published, future-dated) events."""
-        try:
-            current_time = datetime.utcnow()
-            active_events = Event.query.filter(
-                Event.is_published == True,
-                Event.date_time > current_time
-            ).order_by(Event.date_time.asc()).all()
-            
-            result = events_schema.dump(active_events)
-            
-            return {
-                "success": True,
-                "message": "Active events retrieved successfully.",
-                "events": result
-            }, 200
+        """Public route: List all active events with pagination."""
+        
+        # 1. Get query parameters with defaults
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 12, type=int) # Default 12 items per page
 
-        except Exception as e:
-            print(f"Error fetching active events: {e}")
-            return {"success": False, "message": "An unexpected error occurred while fetching events."}, 500
+        # Ensure per_page is reasonable (e.g., max 50)
+        if per_page > 50:
+            per_page = 50
+
+        # 2. Execute pagination query
+        pagination = Event.query.filter_by(status='Active').paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False # Return empty page instead of 404 if out of bounds
+        )
+
+        events = pagination.items
+        
+        # 3. Create the serialized response structure
+        response_data = {
+            'events': events_schema.dump(events),
+            'pagination': pagination_schema.dump(pagination)
+        }
+        
+        return response_data, 200
 
     # BE-204 & BE-301: POST /api/events (Organizer Required)
     @jwt_required()
