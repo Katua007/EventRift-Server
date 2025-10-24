@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - develop
-      - feature/**
   pull_request:
     branches:
       - main
@@ -21,31 +20,18 @@ jobs:
       - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip' # Enable pip caching
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: 📦 Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install dependencies from requirements.txt
           pip install -r requirements.txt
 
-      # NOTE: For DB-dependent tests, you'd use a service container (PostgreSQL) here.
-      # This step assumes only unit tests run without a live DB.
-      - name: 🧪 Run Unit Tests (Placeholder)
+      - name: 🧪 Test App Import
         run: |
-          # Replace 'pytest' with your actual test runner command
-          echo "Running backend tests..."
-          # pytest 
-        continue-on-error: true # Allow deployment even if tests fail initially
+          python -c "import wsgi; print('✅ WSGI app created successfully')"
 
-      - name: 🚀 CD: Deploy to Staging (on develop branch merge)
-        # This job only runs if the push is to the 'develop' branch
-        if: github.ref == 'refs/heads/develop'
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: ✅ Deployment Ready
         run: |
-          echo "Deploying to Staging Environment (e.g., Railway/Render/Heroku)"
-          # Example command for deployment tool (replace with your actual tool's CLI)
-          # railway up --environment staging
-          # This command signals a new deployment on the staging platform.
+          echo "✅ Flask app is ready for deployment to Render"

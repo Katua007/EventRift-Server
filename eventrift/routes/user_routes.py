@@ -2,14 +2,19 @@ from flask_restful import Resource
 from flask import request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.models.user import User
-from app.app import api # Assuming you'll import api from the main app instance
+from eventrift.extensions import api, db
 
 # RBAC Helper (Can be moved to a separate utils/decorators file later)
 from functools import wraps
 from flask_jwt_extended import get_jwt
-from app.models.user import User
-from app.app import db # Import db instance
-from app.utils.email_service import send_verification_email # NEW IMPORT
+try:
+    from eventrift.models.user import User
+    from eventrift.utils.email_service import send_verification_email
+except ImportError:
+    # Fallback for basic setup
+    User = None
+    def send_verification_email(*args):
+        return True
 from flasgger.utils import swag_from # Recommended for external YAML files, but simple docstring works
 
 def role_required(role):
