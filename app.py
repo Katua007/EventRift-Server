@@ -8,6 +8,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from app.config import Config
+from flasgger import Swagger # NEW IMPORT
 
 
 db = SQLAlchemy()
@@ -16,6 +17,9 @@ api = Api()
 jwt = JWTManager()
 
 socketio = SocketIO(cors_allowed_origins="*")
+
+# Initialize Swagger globally
+swagger = Swagger() # NEW INITIALIZATION
 
 def create_app():
     app = Flask(__name__)
@@ -34,7 +38,9 @@ def create_app():
     from app.routes.event_routes import initialize_event_routes
     from app.routes.category_routes import initialize_category_routes
     from app.routes.vendor_routes import initialize_vendor_routes
+    from app.routes import initialize_routes
     
+    initialize_routes(app) # This function should register all your RESTful resources
     initialize_user_routes(api)
     initialize_event_routes(api)
     initialize_category_routes(api)
@@ -61,4 +67,5 @@ def test_disconnect():
 app = create_app()
 
 if __name__ == '__main__':
+    app = create_app()
     app.run(port=5555, debug=True)
