@@ -31,11 +31,14 @@ def create_app():
 
     # Register API routes 
     from app.routes.user_routes import initialize_user_routes
-    from app.routes.event_routes import initialize_event_routes # New Import
+    from app.routes.event_routes import initialize_event_routes
+    from app.routes.category_routes import initialize_category_routes
+    from app.routes.vendor_routes import initialize_vendor_routes
+    
     initialize_user_routes(api)
-    initialize_event_routes(api) # New registration
-    # from app.routes.user_routes import initialize_user_routes
-    # initialize_user_routes(api)
+    initialize_event_routes(api)
+    initialize_category_routes(api)
+    initialize_vendor_routes(api)
 
     return app
 
