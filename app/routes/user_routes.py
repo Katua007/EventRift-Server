@@ -7,6 +7,9 @@ from app.app import api # Assuming you'll import api from the main app instance
 # RBAC Helper (Can be moved to a separate utils/decorators file later)
 from functools import wraps
 from flask_jwt_extended import get_jwt
+from app.models.user import User
+from app.app import db # Import db instance
+from app.utils.email_service import send_verification_email # NEW IMPORT
 
 def role_required(role):
     def wrapper(fn):
@@ -62,6 +65,17 @@ class UserListResource(Resource):
             )
             db.session.add(new_user)
             db.session.commit()
+
+            # --- NEW EMAIL INTEGRATION ---
+            token = new_user.verification_token
+            email_sent = send_verification_email(new_user.email, token)
+
+            if email_sent:
+                return {'message': 'User registered. Please check your email for verification link.'}, 201
+            else:
+                # User is created, but email failed to send (a soft error)
+                return {'message': 'User registered, but verification email failed to send. Try again later.'}, 202
+
             return {'message': 'User registered successfully'}, 201
         except Exception as e:
             db.session.rollback()
