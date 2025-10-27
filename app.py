@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 import os
 import sys
@@ -30,13 +30,24 @@ def create_app():
     app.config.from_object(Config)
     
     # Enable CORS for frontend integration
-    CORS(app, origins=['http://localhost:3000', 'http://localhost:5173', 'https://*.vercel.app'])
+    CORS(app, 
+         origins=[
+             'http://localhost:3000', 
+             'http://localhost:5173', 
+             'https://event-rift-client.vercel.app',
+             'https://*.vercel.app'
+         ],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+         allow_headers=['Content-Type', 'Authorization'],
+         supports_credentials=True)
 
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
     api.init_app(app)
     jwt.init_app(app)
+
+
 
     @app.route('/')
     def hello():
@@ -45,6 +56,38 @@ def create_app():
     @app.route('/api/health')
     def health():
         return {'status': 'healthy', 'message': 'EventRift API is running'}
+    
+    @app.route('/api/test')
+    def test_cors():
+        return {
+            'success': True,
+            'message': 'CORS is working!',
+            'frontend_url': 'https://event-rift-client.vercel.app'
+        }
+    
+    @app.route('/api/events', methods=['GET'])
+    def get_events():
+        events = [
+            {'id': 1, 'title': 'Tech Conference 2024', 'date': '2024-06-15', 'location': 'Nairobi'},
+            {'id': 2, 'title': 'Music Festival', 'date': '2024-07-20', 'location': 'Mombasa'}
+        ]
+        return {'success': True, 'events': events}
+    
+    @app.route('/api/auth/login', methods=['POST'])
+    def login():
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        if email and password:
+            from flask_jwt_extended import create_access_token
+            access_token = create_access_token(identity=email)
+            return {
+                'success': True,
+                'access_token': access_token,
+                'user': {'email': email, 'role': 'user'}
+            }
+        return {'success': False, 'message': 'Invalid credentials'}, 401
 
     return app
 
