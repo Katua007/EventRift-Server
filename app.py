@@ -65,16 +65,22 @@ def create_app():
             'frontend_url': 'https://event-rift-client.vercel.app'
         }
     
-    @app.route('/api/events', methods=['GET'])
+    @app.route('/api/events', methods=['GET', 'OPTIONS'])
     def get_events():
+        if request.method == 'OPTIONS':
+            return '', 200
+            
         events = [
             {'id': 1, 'title': 'Tech Conference 2024', 'date': '2024-06-15', 'location': 'Nairobi'},
             {'id': 2, 'title': 'Music Festival', 'date': '2024-07-20', 'location': 'Mombasa'}
         ]
         return {'success': True, 'events': events}
     
-    @app.route('/api/auth/login', methods=['POST'])
+    @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
     def login():
+        if request.method == 'OPTIONS':
+            return '', 200
+            
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
@@ -88,6 +94,24 @@ def create_app():
                 'user': {'email': email, 'role': 'user'}
             }
         return {'success': False, 'message': 'Invalid credentials'}, 401
+    
+    @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
+    def register():
+        if request.method == 'OPTIONS':
+            return '', 200
+            
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        name = data.get('name') or data.get('username')
+        
+        if email and password and name:
+            return {
+                'success': True,
+                'message': 'User registered successfully',
+                'user': {'email': email, 'name': name, 'role': 'user'}
+            }, 201
+        return {'success': False, 'message': 'Missing required fields'}, 400
 
     return app
 

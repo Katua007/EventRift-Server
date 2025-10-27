@@ -12,6 +12,8 @@ Your backend is now configured to work seamlessly with your Vercel frontend at:
 - **Production**: `https://your-render-app.onrender.com`
 
 ### Authentication
+
+**Login**
 ```http
 POST /api/auth/login
 Content-Type: application/json
@@ -27,6 +29,29 @@ Response:
   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
   "user": {
     "email": "user@example.com",
+    "role": "user"
+  }
+}
+```
+
+**Register**
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "name": "John Doe"
+}
+
+Response:
+{
+  "success": true,
+  "message": "User registered successfully",
+  "user": {
+    "email": "user@example.com",
+    "name": "John Doe",
     "role": "user"
   }
 }
