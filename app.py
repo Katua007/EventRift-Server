@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_cors import CORS
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -27,6 +28,9 @@ except ImportError:
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    
+    # Enable CORS for frontend integration
+    CORS(app, origins=['http://localhost:3000', 'http://localhost:5173', 'https://*.vercel.app'])
 
     # Initialize extensions
     db.init_app(app)
@@ -37,6 +41,10 @@ def create_app():
     @app.route('/')
     def hello():
         return {'message': 'EventRift Server is running!'}
+    
+    @app.route('/api/health')
+    def health():
+        return {'status': 'healthy', 'message': 'EventRift API is running'}
 
     return app
 
