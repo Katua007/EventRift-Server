@@ -57,24 +57,95 @@ def create_app():
     def health():
         return {'status': 'healthy', 'message': 'EventRift API is running'}
     
-    @app.route('/api/test')
+    @app.route('/api/test', methods=['GET', 'OPTIONS'])
     def test_cors():
+        if request.method == 'OPTIONS':
+            return '', 200
         return {
             'success': True,
             'message': 'CORS is working!',
-            'frontend_url': 'https://event-rift-client.vercel.app'
+            'frontend_url': 'https://event-rift-client.vercel.app',
+            'backend_url': request.url_root
         }
+    
+    @app.route('/api/debug', methods=['GET', 'OPTIONS'])
+    def debug_info():
+        if request.method == 'OPTIONS':
+            return '', 200
+        return {
+            'success': True,
+            'endpoints': [
+                'GET /api/events',
+                'GET /api/events/<id>',
+                'POST /api/auth/login',
+                'POST /api/auth/register',
+                'GET /api/health',
+                'GET /api/test'
+            ],
+            'cors_origins': [
+                'https://event-rift-client.vercel.app',
+                'http://localhost:3000',
+                'http://localhost:5173'
+            ],
+            'server_time': str(__import__('datetime').datetime.now())
+        }
+    
+    @app.errorhandler(404)
+    def not_found(error):
+        return {'success': False, 'error': 'Endpoint not found'}, 404
+    
+    @app.errorhandler(500)
+    def internal_error(error):
+        return {'success': False, 'error': 'Internal server error'}, 500
     
     @app.route('/api/events', methods=['GET', 'OPTIONS'])
     def get_events():
         if request.method == 'OPTIONS':
             return '', 200
-            
-        events = [
-            {'id': 1, 'title': 'Tech Conference 2024', 'date': '2024-06-15', 'location': 'Nairobi'},
-            {'id': 2, 'title': 'Music Festival', 'date': '2024-07-20', 'location': 'Mombasa'}
-        ]
-        return {'success': True, 'events': events}
+        
+        try:
+            events = [
+                {
+                    'id': 1, 
+                    'title': 'Tech Conference 2024', 
+                    'description': 'Annual technology conference',
+                    'date': '2024-06-15', 
+                    'location': 'Nairobi',
+                    'price': 5000,
+                    'image': 'https://via.placeholder.com/400x300'
+                },
+                {
+                    'id': 2, 
+                    'title': 'Music Festival', 
+                    'description': 'Live music and entertainment',
+                    'date': '2024-07-20', 
+                    'location': 'Mombasa',
+                    'price': 3000,
+                    'image': 'https://via.placeholder.com/400x300'
+                }
+            ]
+            return {'success': True, 'events': events}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}, 500
+    
+    @app.route('/api/events/<int:event_id>', methods=['GET', 'OPTIONS'])
+    def get_event(event_id):
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        try:
+            event = {
+                'id': event_id,
+                'title': f'Event {event_id}',
+                'description': 'Event description',
+                'date': '2024-06-15',
+                'location': 'Nairobi',
+                'price': 5000,
+                'image': 'https://via.placeholder.com/400x300'
+            }
+            return {'success': True, 'event': event}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}, 500
     
     @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
     def login():
