@@ -33,7 +33,8 @@ def create_app():
     CORS(app, 
          origins=[
              'http://localhost:3000', 
-             'http://localhost:5173', 
+             'http://localhost:5173',
+             'http://localhost:5174',
              'https://event-rift-client.vercel.app',
              'https://*.vercel.app'
          ],
@@ -85,7 +86,8 @@ def create_app():
             'cors_origins': [
                 'https://event-rift-client.vercel.app',
                 'http://localhost:3000',
-                'http://localhost:5173'
+                'http://localhost:5173',
+                'http://localhost:5174'
             ],
             'server_time': str(__import__('datetime').datetime.now())
         }
