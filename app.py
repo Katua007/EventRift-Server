@@ -80,8 +80,10 @@ def create_app():
                 'GET /api/events/<id>',
                 'POST /api/auth/login',
                 'POST /api/auth/register',
+                'GET /api/auth/profile',
                 'GET /api/health',
-                'GET /api/test'
+                'GET /api/test',
+                'GET /api/debug'
             ],
             'cors_origins': [
                 'https://event-rift-client.vercel.app',
@@ -185,6 +187,32 @@ def create_app():
                 'user': {'email': email, 'name': name, 'role': 'user'}
             }, 201
         return {'success': False, 'message': 'Missing required fields'}, 400
+    
+    @app.route('/api/auth/profile', methods=['GET', 'OPTIONS'])
+    def get_profile():
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        try:
+            from flask_jwt_extended import jwt_required, get_jwt_identity
+            
+            # Check for Authorization header
+            auth_header = request.headers.get('Authorization')
+            if not auth_header or not auth_header.startswith('Bearer '):
+                return {'success': False, 'message': 'No token provided'}, 401
+            
+            # Mock user profile (replace with actual JWT verification)
+            return {
+                'success': True,
+                'user': {
+                    'id': 1,
+                    'email': 'user@example.com',
+                    'name': 'User Name',
+                    'role': 'user'
+                }
+            }
+        except Exception as e:
+            return {'success': False, 'message': 'Invalid token'}, 401
 
     return app
 
