@@ -73,6 +73,6 @@ class AuthMe(Resource):
             return {'success': False, 'message': str(e)}, 500
 
 def initialize_auth_routes(api):
-    api.add_resource(AuthLogin, '/api/auth/login')
-    api.add_resource(AuthRegister, '/api/auth/register')
-    api.add_resource(AuthMe, '/api/auth/me')
+    api.add_resource(AuthLogin, '/auth/login')
+    api.add_resource(AuthRegister, '/auth/register')
+    api.add_resource(AuthMe, '/auth/profile')

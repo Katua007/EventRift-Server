@@ -1,7 +1,7 @@
 from flask_restful import Resource
 from flask import request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from app.models.user import User
+from eventrift.models.user import User
 from eventrift.extensions import api, db
 
 # RBAC Helper (Can be moved to a separate utils/decorators file later)
@@ -144,7 +144,7 @@ class UserListResource(Resource):
         return [{'id': u.id, 'username': u.username, 'role': u.role} for u in users], 200
     
 def initialize_user_routes(api):
-    api.add_resource(Login, '/login')
+    api.add_resource(LoginResource, '/login')
     api.add_resource(Protected, '/protected')
     # Add other user routes here
     api.add_resource(UserListResource, '/users')
