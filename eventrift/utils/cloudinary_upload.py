@@ -1,7 +1,7 @@
 import cloudinary
 import cloudinary.uploader
 import os
-from app.config import ( # Import credentials from app/config
+from eventrift.config import ( # Import credentials from eventrift/config
     CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
 )
 
