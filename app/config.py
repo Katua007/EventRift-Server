@@ -16,6 +16,9 @@ class Config:
     # Other Configs
     SECRET_KEY = os.environ.get('SECRET_KEY', 'another-default-secret')
 
+    # Frontend Configuration
+    FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://event-rift-client.vercel.app')
+
 # =========================================================================
 # --- Safaricom Daraja API Global Configuration ---
 # These constants are used by utility files (daraja_api.py, routes) via direct import.

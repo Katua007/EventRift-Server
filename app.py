@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_restful import Api
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -16,6 +17,9 @@ jwt = JWTManager()
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    # Initialize CORS
+    CORS(app, origins=[app.config['FRONTEND_URL']])
 
     # Initialize extensions
     db.init_app(app)

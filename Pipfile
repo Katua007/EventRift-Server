@@ -13,6 +13,7 @@ marshmallow = "*"
 python-dotenv = "*"
 flask-jwt-extended = "*"
 gunicorn = "*"
+flask-cors = "*"
 
 [dev-packages]
 

@@ -9,7 +9,7 @@ class User(db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     username = db.Column(db.String(50), nullable=False)
     _password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='Goer') # Role-Based Access Control
+    role = db.Column(db.String(20), nullable=False, default='Goer') # Role-Based Access Control - Values: 'Goer', 'Organizer', 'Vendor'
     
     # Vendor specific fields
     license_number = db.Column(db.String(50))

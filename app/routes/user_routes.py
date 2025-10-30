@@ -14,8 +14,15 @@ class Login(Resource):
 
         if user and user.check_password(password):
             # Create a token with user ID and role for RBAC
-            access_token = create_access_token(identity=user.id, additional_claims={'role': user.role})
-            return {'message': 'Login successful', 'access_token': access_token, 'user_role': user.role}, 200
+            # Map internal role values to frontend expected values
+            role_mapping = {
+                'Goer': 'Goer',
+                'Organizer': 'Organizer',
+                'Vendor': 'Vendor'
+            }
+            frontend_role = role_mapping.get(user.role, 'Goer')
+            access_token = create_access_token(identity=user.id, additional_claims={'role': frontend_role})
+            return {'message': 'Login successful', 'access_token': access_token, 'user_role': frontend_role}, 200
         
         return {'message': 'Invalid credentials'}, 401
 

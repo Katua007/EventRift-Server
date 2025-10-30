@@ -7,3 +7,4 @@ marshmallow
 python-dotenv
 Flask-JWT-Extended
 gunicorn # For deployment
+flask-cors

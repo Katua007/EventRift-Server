@@ -120,38 +120,38 @@ class MpesaCallbackResource(Resource):
                 payment_id = 50 
 
                 if True: # Replace with check: if payment_record and payment_record.status != 'PAID':
-                    try:
+                    # try:
                         # Update payment record status and details
                         # payment_record.status = 'PAID'
                         # payment_record.mpesa_receipt = mpesa_receipt_number
                         # payment_record.transaction_date = transaction_date
-                        
-                        # Create the specified number of Ticket records
-                        new_tickets = []
-                        for _ in range(quantity):
-                            new_ticket = Ticket(
-                                user_id=user_id,
-                                event_id=event_id,
-                                payment_id=payment_id,
-                                status='PAID',
-                                ticket_type='General Admission' # Adjust based on payment_record if necessary
-                            )
-                            db.session.add(new_ticket)
-                            new_tickets.append(new_ticket)
-                        
-                        db.session.flush() # Generate IDs for tickets (needed for Attendance foreign key)
-                        
-                        # Create corresponding Attendance records
-                        for ticket in new_tickets:
-                            new_attendance = Attendance(ticket_id=ticket.id, is_checked_in=False)
-                            db.session.add(new_attendance)
 
-                        db.session.commit()
+                        # Create the specified number of Ticket records
+                        # new_tickets = []
+                        # for _ in range(quantity):
+                        #     new_ticket = Ticket(
+                        #         user_id=user_id,
+                        #         event_id=event_id,
+                        #         payment_id=payment_id,
+                        #         status='PAID',
+                        #         ticket_type='General Admission' # Adjust based on payment_record if necessary
+                        #     )
+                        #     db.session.add(new_ticket)
+                        #     new_tickets.append(new_ticket)
+                        #
+                        #     db.session.flush() # Generate IDs for tickets (needed for Attendance foreign key)
+                        #
+                        #     # Create corresponding Attendance records
+                        #     for ticket in new_tickets:
+                        #         new_attendance = Attendance(ticket_id=ticket.id, is_checked_in=False)
+                        #         db.session.add(new_attendance)
+
+                        # db.session.commit()
                         print(f"Successfully created {quantity} tickets for user {user_id} and event {event_id}.")
-                    except Exception as e:
-                        db.session.rollback()
-                        print(f"FATAL ERROR: Failed to create tickets after successful payment: {e}")
-                        # You MUST log this and have an offline process to reconcile tickets!
+                    # except Exception as e:
+                    #     db.session.rollback()
+                    #     print(f"FATAL ERROR: Failed to create tickets after successful payment: {e}")
+                    #     # You MUST log this and have an offline process to reconcile tickets!
 
                 # --- END TICKET CREATION LOGIC ---
                 
