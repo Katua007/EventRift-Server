@@ -1,1 +1,1 @@
-from .pagination-schema import pagination_schema
+from . import pagination_schema
