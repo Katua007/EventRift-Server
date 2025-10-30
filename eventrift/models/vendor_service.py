@@ -1,4 +1,4 @@
-from app import db
+from eventrift import db
 from datetime import datetime
 
 class VendorService(db.Model):

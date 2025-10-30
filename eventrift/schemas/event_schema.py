@@ -1,5 +1,5 @@
 from marshmallow import Schema, fields, validate, post_load
-from app.models.event import Event
+from eventrift.models.event import Event
 
 class EventSchema(Schema):
     id = fields.Int(dump_only=True)

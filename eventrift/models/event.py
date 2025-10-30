@@ -1,5 +1,5 @@
 from datetime import datetime
-from app.extensions import db # Assuming you initialize SQLAlchemy in app/extensions.py or app/__init__.py
+from eventrift.extensions import db # Assuming you initialize SQLAlchemy in app/extensions.py or app/__init__.py
 
 class Event(db.Model):
     __tablename__ = 'events'
