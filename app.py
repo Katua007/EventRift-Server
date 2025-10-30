@@ -131,7 +131,7 @@ def create_app():
             'timestamp': __import__('datetime').datetime.now().isoformat()
         })
     
-    @app.route('/api/events', methods=['GET', 'POST', 'OPTIONS'])
+    @app.route('/events', methods=['GET', 'POST', 'OPTIONS'])
     def handle_events():
         if request.method == 'OPTIONS':
             return '', 200
@@ -164,7 +164,7 @@ def create_app():
             
             return {'success': True, 'message': 'Event created successfully', 'event': new_event}, 201
     
-    @app.route('/api/events/<int:event_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+    @app.route('/events/<int:event_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
     def handle_event(event_id):
         if request.method == 'OPTIONS':
             return '', 200
@@ -200,7 +200,7 @@ def create_app():
             send_notification('event_updated', event)
             return {'success': True, 'message': 'Event updated successfully', 'event': event}
     
-    @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
+    @app.route('/auth/login', methods=['POST', 'OPTIONS'])
     def login():
         if request.method == 'OPTIONS':
             return '', 200
@@ -219,7 +219,7 @@ def create_app():
             }
         return {'success': False, 'message': 'Invalid credentials'}, 401
     
-    @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
+    @app.route('/auth/register', methods=['POST', 'OPTIONS'])
     def register():
         if request.method == 'OPTIONS':
             return '', 200
@@ -237,7 +237,7 @@ def create_app():
             }, 201
         return {'success': False, 'message': 'Missing required fields'}, 400
     
-    @app.route('/api/auth/profile', methods=['GET', 'OPTIONS'])
+    @app.route('/auth/profile', methods=['GET', 'OPTIONS'])
     def get_profile():
         if request.method == 'OPTIONS':
             return '', 200
@@ -263,7 +263,7 @@ def create_app():
         except Exception as e:
             return {'success': False, 'message': 'Invalid token'}, 401
     
-    @app.route('/api/services', methods=['GET', 'POST', 'OPTIONS'])
+    @app.route('/services', methods=['GET', 'POST', 'OPTIONS'])
     def handle_services():
         if request.method == 'OPTIONS':
             return '', 200
@@ -289,7 +289,7 @@ def create_app():
             
             return {'success': True, 'message': 'Service created successfully', 'service': new_service}, 201
     
-    @app.route('/api/services/<int:service_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+    @app.route('/services/<int:service_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
     def handle_service(service_id):
         if request.method == 'OPTIONS':
             return '', 200
@@ -313,13 +313,13 @@ def create_app():
             
             return {'success': True, 'message': 'Service updated successfully', 'service': service}
     
-    @app.route('/api/notifications', methods=['GET', 'OPTIONS'])
+    @app.route('/notifications', methods=['GET', 'OPTIONS'])
     def get_notifications():
         if request.method == 'OPTIONS':
             return '', 200
         return {'success': True, 'notifications': notifications_db}
     
-    @app.route('/api/dashboard/organizer', methods=['GET', 'OPTIONS'])
+    @app.route('/dashboard/organizer', methods=['GET', 'OPTIONS'])
     def organizer_dashboard():
         if request.method == 'OPTIONS':
             return '', 200
@@ -335,7 +335,7 @@ def create_app():
             'total_events': len(organizer_events)
         }
     
-    @app.route('/api/dashboard/vendor', methods=['GET', 'OPTIONS'])
+    @app.route('/dashboard/vendor', methods=['GET', 'OPTIONS'])
     def vendor_dashboard():
         if request.method == 'OPTIONS':
             return '', 200
