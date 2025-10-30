@@ -3,7 +3,7 @@ from datetime import datetime
 
 class VendorService(db.Model):
     __tablename__ = 'vendor_services'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     vendor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     service_name = db.Column(db.String(200), nullable=False)
@@ -19,6 +19,6 @@ class VendorService(db.Model):
     service_location = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     def __repr__(self):
         return f'<VendorService {self.service_name}>'
