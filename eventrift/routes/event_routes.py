@@ -7,7 +7,7 @@ import json # Used to parse JSON data if sent in a 'data' form field
 from eventrift.extensions import db # Assuming db is initialized here or passed via extensions
 
 from eventrift.schemas.event_schema import event_schema, events_schema
-from eventrift.schemas.pagination_schema import pagination_schema
+from eventrift.schemas.pagination-schema import pagination_schema
 from eventrift.models.event import Event
 from eventrift.decorators import requires_roles
 from eventrift.utils.cloudinary_upload import upload_event_image # <-- Cloudinary Utility
