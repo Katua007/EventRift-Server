@@ -102,54 +102,103 @@ def create_app():
     def internal_error(error):
         return {'success': False, 'error': 'Internal server error'}, 500
     
-    @app.route('/api/events', methods=['GET', 'OPTIONS'])
-    def get_events():
-        if request.method == 'OPTIONS':
-            return '', 200
-        
-        try:
-            events = [
-                {
-                    'id': 1, 
-                    'title': 'Tech Conference 2024', 
-                    'description': 'Annual technology conference',
-                    'date': '2024-06-15', 
-                    'location': 'Nairobi',
-                    'price': 5000,
-                    'image': 'https://via.placeholder.com/400x300'
-                },
-                {
-                    'id': 2, 
-                    'title': 'Music Festival', 
-                    'description': 'Live music and entertainment',
-                    'date': '2024-07-20', 
-                    'location': 'Mombasa',
-                    'price': 3000,
-                    'image': 'https://via.placeholder.com/400x300'
-                }
-            ]
-            return {'success': True, 'events': events}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}, 500
+    # Global storage
+    events_db = [
+        {
+            'id': 1, 
+            'title': 'Tech Conference 2024', 
+            'description': 'Annual technology conference',
+            'date': '2024-06-15',
+            'time': '09:00',
+            'location': 'Nairobi',
+            'theme': 'Innovation',
+            'category': 'Technology',
+            'dress_code': 'Business Casual',
+            'ticket_price': 5000,
+            'image': 'https://via.placeholder.com/400x300',
+            'organizer_id': 'organizer@example.com'
+        }
+    ]
     
-    @app.route('/api/events/<int:event_id>', methods=['GET', 'OPTIONS'])
-    def get_event(event_id):
+    services_db = []
+    notifications_db = []
+    
+    def send_notification(type, data):
+        notifications_db.append({
+            'id': len(notifications_db) + 1,
+            'type': type,
+            'message': f"Event '{data['title']}' has been {type.replace('_', ' ')}",
+            'timestamp': __import__('datetime').datetime.now().isoformat()
+        })
+    
+    @app.route('/api/events', methods=['GET', 'POST', 'OPTIONS'])
+    def handle_events():
         if request.method == 'OPTIONS':
             return '', 200
         
-        try:
-            event = {
-                'id': event_id,
-                'title': f'Event {event_id}',
-                'description': 'Event description',
-                'date': '2024-06-15',
-                'location': 'Nairobi',
-                'price': 5000,
-                'image': 'https://via.placeholder.com/400x300'
+        if request.method == 'GET':
+            return {'success': True, 'events': events_db}
+        
+        if request.method == 'POST':
+            auth_header = request.headers.get('Authorization')
+            if not auth_header:
+                return {'success': False, 'message': 'Authentication required'}, 401
+            
+            data = request.get_json()
+            new_event = {
+                'id': len(events_db) + 1,
+                'title': data.get('title'),
+                'description': data.get('description'),
+                'date': data.get('date'),
+                'time': data.get('time'),
+                'location': data.get('location'),
+                'theme': data.get('theme'),
+                'category': data.get('category'),
+                'dress_code': data.get('dress_code'),
+                'ticket_price': data.get('ticket_price'),
+                'image': data.get('image', 'https://via.placeholder.com/400x300'),
+                'organizer_id': 'organizer@example.com'
             }
+            events_db.append(new_event)
+            send_notification('event_created', new_event)
+            
+            return {'success': True, 'message': 'Event created successfully', 'event': new_event}, 201
+    
+    @app.route('/api/events/<int:event_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+    def handle_event(event_id):
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        if request.method == 'GET':
+            event = next((e for e in events_db if e['id'] == event_id), None)
+            if not event:
+                return {'success': False, 'message': 'Event not found'}, 404
             return {'success': True, 'event': event}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}, 500
+        
+        if request.method == 'PUT':
+            auth_header = request.headers.get('Authorization')
+            if not auth_header:
+                return {'success': False, 'message': 'Authentication required'}, 401
+            
+            event = next((e for e in events_db if e['id'] == event_id), None)
+            if not event:
+                return {'success': False, 'message': 'Event not found'}, 404
+            
+            data = request.get_json()
+            event.update({
+                'title': data.get('title', event['title']),
+                'description': data.get('description', event['description']),
+                'date': data.get('date', event['date']),
+                'time': data.get('time', event['time']),
+                'location': data.get('location', event['location']),
+                'theme': data.get('theme', event['theme']),
+                'category': data.get('category', event['category']),
+                'dress_code': data.get('dress_code', event['dress_code']),
+                'ticket_price': data.get('ticket_price', event['ticket_price'])
+            })
+            
+            send_notification('event_updated', event)
+            return {'success': True, 'message': 'Event updated successfully', 'event': event}
     
     @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
     def login():
@@ -213,6 +262,94 @@ def create_app():
             }
         except Exception as e:
             return {'success': False, 'message': 'Invalid token'}, 401
+    
+    @app.route('/api/services', methods=['GET', 'POST', 'OPTIONS'])
+    def handle_services():
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        if request.method == 'GET':
+            return {'success': True, 'services': services_db}
+        
+        if request.method == 'POST':
+            auth_header = request.headers.get('Authorization')
+            if not auth_header:
+                return {'success': False, 'message': 'Authentication required'}, 401
+            
+            data = request.get_json()
+            new_service = {
+                'id': len(services_db) + 1,
+                'name': data.get('name'),
+                'description': data.get('description'),
+                'price': data.get('price'),
+                'category': data.get('category'),
+                'vendor_id': 'vendor@example.com'
+            }
+            services_db.append(new_service)
+            
+            return {'success': True, 'message': 'Service created successfully', 'service': new_service}, 201
+    
+    @app.route('/api/services/<int:service_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+    def handle_service(service_id):
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        if request.method == 'PUT':
+            auth_header = request.headers.get('Authorization')
+            if not auth_header:
+                return {'success': False, 'message': 'Authentication required'}, 401
+            
+            service = next((s for s in services_db if s['id'] == service_id), None)
+            if not service:
+                return {'success': False, 'message': 'Service not found'}, 404
+            
+            data = request.get_json()
+            service.update({
+                'name': data.get('name', service['name']),
+                'description': data.get('description', service['description']),
+                'price': data.get('price', service['price']),
+                'category': data.get('category', service['category'])
+            })
+            
+            return {'success': True, 'message': 'Service updated successfully', 'service': service}
+    
+    @app.route('/api/notifications', methods=['GET', 'OPTIONS'])
+    def get_notifications():
+        if request.method == 'OPTIONS':
+            return '', 200
+        return {'success': True, 'notifications': notifications_db}
+    
+    @app.route('/api/dashboard/organizer', methods=['GET', 'OPTIONS'])
+    def organizer_dashboard():
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return {'success': False, 'message': 'Authentication required'}, 401
+        
+        organizer_events = [e for e in events_db if e.get('organizer_id') == 'organizer@example.com']
+        return {
+            'success': True,
+            'events': organizer_events,
+            'total_events': len(organizer_events)
+        }
+    
+    @app.route('/api/dashboard/vendor', methods=['GET', 'OPTIONS'])
+    def vendor_dashboard():
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return {'success': False, 'message': 'Authentication required'}, 401
+        
+        vendor_services = [s for s in services_db if s.get('vendor_id') == 'vendor@example.com']
+        return {
+            'success': True,
+            'services': vendor_services,
+            'total_services': len(vendor_services)
+        }
 
     return app
 
