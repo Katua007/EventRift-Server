@@ -5,7 +5,7 @@
 Your backend is now configured to work seamlessly with your Vercel frontend at:
 **https://event-rift-client.vercel.app**
 
-## 🌐 **API Endpoints**
+##  **API Endpoints**
 
 ### Base URL
 - **Development**: `http://localhost:5000`
@@ -98,19 +98,19 @@ Response:
 }
 ```
 
-## 🔧 **CORS Configuration**
+##  **CORS Configuration**
 
-✅ **Allowed Origins:**
+ **Allowed Origins:**
 - `http://localhost:3000` (React dev)
 - `http://localhost:5173` (Vite dev)
 - `https://event-rift-client.vercel.app` (Production)
 - `https://*.vercel.app` (Vercel previews)
 
-✅ **Allowed Methods:** GET, POST, PUT, DELETE, OPTIONS
-✅ **Allowed Headers:** Content-Type, Authorization
-✅ **Credentials Support:** Enabled
+**Allowed Methods:** GET, POST, PUT, DELETE, OPTIONS
+ **Allowed Headers:** Content-Type, Authorization
+**Credentials Support:** Enabled
 
-## 📱 **Frontend Integration Code**
+##  **Frontend Integration Code**
 
 ### JavaScript/React Example
 ```javascript
@@ -155,15 +155,15 @@ async function makeAuthenticatedRequest(url) {
 }
 ```
 
-## 🚀 **Deployment Status**
+## **Deployment Status**
 
-✅ **Backend**: Ready for Render deployment
-✅ **CORS**: Configured for Vercel frontend
-✅ **API Routes**: Working and tested
-✅ **Authentication**: JWT tokens ready
-✅ **Error Handling**: Proper HTTP status codes
+**Backend**: Ready for Render deployment
+**CORS**: Configured for Vercel frontend
+**API Routes**: Working and tested
+**Authentication**: JWT tokens ready
+ **Error Handling**: Proper HTTP status codes
 
-## 🔄 **Next Steps**
+##  **Next Steps**
 
 1. **Deploy Backend to Render**:
    ```bash
