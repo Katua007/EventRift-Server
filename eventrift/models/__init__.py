@@ -1,4 +1,4 @@
-from app.app import db # Import the shared SQLAlchemy instance
+from eventrift.extensions import db # Import the shared SQLAlchemy instance
 
 # Import models so they are registered with SQLAlchemy
 from .user import User

@@ -1,10 +1,10 @@
 from flask_restful import Resource
 from flask import request
-from app.models.vendor_service import VendorService
-from app.models import db
-from app.schemas.vendor_service_schema import vendor_service_schema, vendor_services_schema
+from eventrift.models.vendor_service import VendorService
+from eventrift.models import db
+from eventrift.schemas.vendor_service_schema import vendor_service_schema, vendor_services_schema
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from app.routes.user_routes import role_required
+from eventrift.routes.user_routes import role_required
 
 class VendorServiceListResource(Resource):
     @jwt_required()
