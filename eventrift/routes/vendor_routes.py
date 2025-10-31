@@ -58,9 +58,16 @@ class VendorServiceResource(Resource):
                 return vendor_service_schema.dump(service), 200
             else:
                 return {'message': 'Invalid license status value.'}, 400
-        
+
         return {'message': 'No valid fields provided for update.'}, 400
 
+class VendorServicesByVendorResource(Resource):
+    def get(self, vendor_id):
+        """Get all services for a specific vendor."""
+        services = VendorService.query.filter_by(vendor_id=vendor_id).all()
+        return vendor_services_schema.dump(services), 200
+
 def initialize_vendor_routes(api):
-    api.add_resource(VendorServiceListResource, '/vendor/services')
-    api.add_resource(VendorServiceResource, '/vendor/services/<int:service_id>')
+    api.add_resource(VendorServiceListResource, '/api/vendors/services')
+    api.add_resource(VendorServiceResource, '/api/vendors/services/<int:service_id>')
+    api.add_resource(VendorServicesByVendorResource, '/api/vendors/<int:vendor_id>/services')

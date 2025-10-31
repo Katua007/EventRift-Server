@@ -120,5 +120,17 @@ class EventListResource(Resource):
             print(f"Error creating event: {e}")
             return {"success": False, "message": "An unexpected error occurred."}, 500
 
-# Register the resource with the API blueprint
-api.add_resource(EventListResource, '/events')
+class OrganizerEventsResource(Resource):
+
+    @jwt_required()
+    def get(self):
+        current_user_id = get_jwt_identity()
+        events = Event.query.filter_by(organizer_id=current_user_id).all()
+        return {
+            'success': True,
+            'events': events_schema.dump(events)
+        }, 200
+
+# Register the resources with the API blueprint
+api.add_resource(EventListResource, '/api/events')
+api.add_resource(OrganizerEventsResource, '/api/organizers/events')

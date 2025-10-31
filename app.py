@@ -30,12 +30,13 @@ def create_app():
     app.config.from_object(Config)
     
     # Enable CORS for frontend integration
-    CORS(app, 
+    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5174')
+    CORS(app,
          origins=[
-             'http://localhost:3000', 
+             'http://localhost:3000',
              'http://localhost:5173',
              'http://localhost:5174',
-             'https://event-rift-client.vercel.app',
+             frontend_url,
              'https://*.vercel.app'
          ],
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -47,6 +48,20 @@ def create_app():
     migrate.init_app(app, db)
     api.init_app(app)
     jwt.init_app(app)
+
+    # Register blueprints if available
+    try:
+        from eventrift.routes.event_routes import events_bp
+        app.register_blueprint(events_bp, url_prefix='/')
+    except ImportError:
+        pass
+
+    # Initialize routes
+    try:
+        from eventrift.routes import initialize_routes
+        initialize_routes(app)
+    except ImportError:
+        pass
 
     # Global storage
     events_db = [
@@ -283,17 +298,33 @@ def create_app():
     def vendor_dashboard():
         if request.method == 'OPTIONS':
             return '', 200
-        
+
         auth_header = request.headers.get('Authorization')
         if not auth_header:
             return {'success': False, 'message': 'Authentication required'}, 401
-        
+
         vendor_services = [s for s in services_db if s.get('vendor_id') == 'vendor@example.com']
         return {
             'success': True,
             'services': vendor_services,
             'total_services': len(vendor_services)
         }
+
+    @app.route('/api/organizers/events', methods=['GET', 'OPTIONS'])
+    def get_organizer_events():
+        if request.method == 'OPTIONS':
+            return '', 200
+
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return {'success': False, 'message': 'Authentication required'}, 401
+
+        organizer_events = [e for e in events_db if e.get('organizer_id') == 'organizer@example.com']
+        return {
+            'success': True,
+            'events': organizer_events
+        }
+
 
     @app.route('/')
     def hello():
