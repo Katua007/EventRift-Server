@@ -132,5 +132,5 @@ class OrganizerEventsResource(Resource):
         }, 200
 
 # Register the resources with the API blueprint
-api.add_resource(EventListResource, '/api/events')
-api.add_resource(OrganizerEventsResource, '/api/organizers/events')
+api.add_resource(EventListResource, '/events')
+api.add_resource(OrganizerEventsResource, '/organizers/events')

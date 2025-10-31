@@ -68,6 +68,6 @@ class VendorServicesByVendorResource(Resource):
         return vendor_services_schema.dump(services), 200
 
 def initialize_vendor_routes(api):
-    api.add_resource(VendorServiceListResource, '/api/vendors/services')
-    api.add_resource(VendorServiceResource, '/api/vendors/services/<int:service_id>')
-    api.add_resource(VendorServicesByVendorResource, '/api/vendors/<int:vendor_id>/services')
+    api.add_resource(VendorServiceListResource, '/vendors/services')
+    api.add_resource(VendorServiceResource, '/vendors/services/<int:service_id>')
+    api.add_resource(VendorServicesByVendorResource, '/vendors/<int:vendor_id>/services')
