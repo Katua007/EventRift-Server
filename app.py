@@ -2,7 +2,12 @@ from flask import Flask, request
 from flask_cors import CORS
 import os
 import sys
+import logging
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 try:
     from eventrift.config import Config
@@ -30,19 +35,28 @@ def create_app():
     app.config.from_object(Config)
     
     # Enable CORS for frontend integration
-    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5174')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://event-rift-client.vercel.app')
+    
+    # Configure CORS with proper preflight handling
     CORS(app,
-          origins=[
-              'http://localhost:3000',
-              'http://localhost:5173',
-              'http://localhost:5174',
-              frontend_url,
-              'https://*.vercel.app',
-              'https://event-rift-client.vercel.app'
-          ],
-          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-          allow_headers=['Content-Type', 'Authorization'],
-          supports_credentials=True)
+         origins=[frontend_url],
+         methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+         allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+         supports_credentials=True,
+         expose_headers=['Content-Type', 'Authorization'])
+    
+    # Add explicit OPTIONS handler for all routes
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            logger.info(f"OPTIONS preflight request received for {request.url} from origin: {request.headers.get('Origin')}")
+            response = app.make_default_options_response()
+            headers = response.headers
+            headers['Access-Control-Allow-Origin'] = frontend_url
+            headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+            headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept'
+            headers['Access-Control-Allow-Credentials'] = 'true'
+            return response, 204
 
     # Initialize extensions
     db.init_app(app)
@@ -96,7 +110,7 @@ def create_app():
     @app.route('/events', methods=['GET', 'POST', 'OPTIONS'])
     def handle_events():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
         
         if request.method == 'GET':
             return {'success': True, 'events': events_db}
@@ -129,7 +143,7 @@ def create_app():
     @app.route('/events/<int:event_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
     def handle_event(event_id):
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
         
         if request.method == 'GET':
             event = next((e for e in events_db if e['id'] == event_id), None)
@@ -165,7 +179,7 @@ def create_app():
     @app.route('/auth/login', methods=['POST', 'OPTIONS'])
     def login():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
             
         data = request.get_json()
         email = data.get('email')
@@ -184,7 +198,7 @@ def create_app():
     @app.route('/auth/register', methods=['POST', 'OPTIONS'])
     def register():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
             
         data = request.get_json()
         email = data.get('email')
@@ -202,7 +216,7 @@ def create_app():
     @app.route('/auth/profile', methods=['GET', 'OPTIONS'])
     def get_profile():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
         
         try:
             # Check for Authorization header
@@ -226,7 +240,7 @@ def create_app():
     @app.route('/services', methods=['GET', 'POST', 'OPTIONS'])
     def handle_services():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
         
         if request.method == 'GET':
             return {'success': True, 'services': services_db}
@@ -252,7 +266,7 @@ def create_app():
     @app.route('/services/<int:service_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
     def handle_service(service_id):
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
         
         if request.method == 'PUT':
             auth_header = request.headers.get('Authorization')
@@ -276,13 +290,13 @@ def create_app():
     @app.route('/notifications', methods=['GET', 'OPTIONS'])
     def get_notifications():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
         return {'success': True, 'notifications': notifications_db}
     
     @app.route('/dashboard/organizer', methods=['GET', 'OPTIONS'])
     def organizer_dashboard():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
         
         auth_header = request.headers.get('Authorization')
         if not auth_header:
@@ -298,7 +312,7 @@ def create_app():
     @app.route('/dashboard/vendor', methods=['GET', 'OPTIONS'])
     def vendor_dashboard():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
 
         auth_header = request.headers.get('Authorization')
         if not auth_header:
@@ -314,7 +328,7 @@ def create_app():
     @app.route('/organizers/events', methods=['GET', 'OPTIONS'])
     def get_organizer_events():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
 
         auth_header = request.headers.get('Authorization')
         if not auth_header:
@@ -339,7 +353,7 @@ def create_app():
     @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
     def api_login():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
             
         data = request.get_json()
         email = data.get('email')
@@ -358,7 +372,7 @@ def create_app():
     @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
     def api_register():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
             
         data = request.get_json()
         email = data.get('email')
@@ -376,7 +390,7 @@ def create_app():
     @app.route('/test', methods=['GET', 'OPTIONS'])
     def test_cors():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
         return {
             'success': True,
             'message': 'CORS is working!',
@@ -394,7 +408,7 @@ def create_app():
     @app.route('/debug', methods=['GET', 'OPTIONS'])
     def debug_info():
         if request.method == 'OPTIONS':
-            return '', 200
+            return '', 204
         return {
             'success': True,
             'endpoints': [
