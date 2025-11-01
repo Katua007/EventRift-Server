@@ -1,4 +1,4 @@
-from eventrift.models import db
+from eventrift.extensions import db
 from sqlalchemy.ext.hybrid import hybrid_property
 from werkzeug.security import generate_password_hash, check_password_hash
 
