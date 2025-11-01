@@ -2,10 +2,15 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_restful import Api
 from flask_jwt_extended import JWTManager
-from flask_socketio import SocketIO
 
 db = SQLAlchemy()
 migrate = Migrate()
 api = Api()
 jwt = JWTManager()
-socketio = SocketIO(cors_allowed_origins="*")
+
+# Optional SocketIO import - only initialize if available
+try:
+    from flask_socketio import SocketIO
+    socketio = SocketIO(cors_allowed_origins="*")
+except ImportError:
+    socketio = None

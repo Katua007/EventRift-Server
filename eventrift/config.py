@@ -1,13 +1,31 @@
 import os
-from dotenv import load_dotenv
-load_dotenv()
+
+# Optional dotenv import - only load if available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv not available, environment variables should be set by the deployment platform
+    pass
 
 class Config:
     # Database Configuration
     DATABASE_URL = os.environ.get('DATABASE_URL')
     if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    SQLALCHEMY_DATABASE_URI = DATABASE_URL or 'postgresql://user:pass@localhost:5432/eventrift_dev'
+    
+    # Use SQLite as fallback for local development when PostgreSQL isn't available
+    if DATABASE_URL:
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    else:
+        # Check if we have PostgreSQL dependencies available
+        try:
+            import psycopg2
+            SQLALCHEMY_DATABASE_URI = 'postgresql://user:pass@localhost:5432/eventrift_dev'
+        except ImportError:
+            # Fall back to SQLite for local development
+            SQLALCHEMY_DATABASE_URI = 'sqlite:///eventrift.db'
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT Configuration
