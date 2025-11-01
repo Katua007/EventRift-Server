@@ -112,33 +112,46 @@ def create_app():
         if request.method == 'OPTIONS':
             return '', 204
         
-        if request.method == 'GET':
-            return {'success': True, 'events': events_db}
-        
-        if request.method == 'POST':
-            auth_header = request.headers.get('Authorization')
-            if not auth_header:
-                return {'success': False, 'message': 'Authentication required'}, 401
+        # Try to use the proper event routes if available
+        try:
+            from eventrift.routes.event_routes import EventListResource
+            resource = EventListResource()
             
-            data = request.get_json()
-            new_event = {
-                'id': len(events_db) + 1,
-                'title': data.get('title'),
-                'description': data.get('description'),
-                'date': data.get('date'),
-                'time': data.get('time'),
-                'location': data.get('location'),
-                'theme': data.get('theme'),
-                'category': data.get('category'),
-                'dress_code': data.get('dress_code'),
-                'ticket_price': data.get('ticket_price'),
-                'image': data.get('image', 'https://via.placeholder.com/400x300'),
-                'organizer_id': 'organizer@example.com'
-            }
-            events_db.append(new_event)
-            send_notification('event_created', new_event)
+            if request.method == 'GET':
+                return resource.get()
+            elif request.method == 'POST':
+                return resource.post()
+                
+        except Exception as e:
+            print(f"Error using EventListResource: {e}")
+            # Fallback to simple implementation
+            if request.method == 'GET':
+                return {'success': True, 'events': events_db}
             
-            return {'success': True, 'message': 'Event created successfully', 'event': new_event}, 201
+            if request.method == 'POST':
+                auth_header = request.headers.get('Authorization')
+                if not auth_header:
+                    return {'success': False, 'message': 'Authentication required'}, 401
+                
+                data = request.get_json()
+                new_event = {
+                    'id': len(events_db) + 1,
+                    'title': data.get('title'),
+                    'description': data.get('description'),
+                    'date': data.get('date'),
+                    'time': data.get('time'),
+                    'location': data.get('location'),
+                    'theme': data.get('theme'),
+                    'category': data.get('category'),
+                    'dress_code': data.get('dress_code'),
+                    'ticket_price': data.get('ticket_price'),
+                    'image': data.get('image', 'https://via.placeholder.com/400x300'),
+                    'organizer_id': 'organizer@example.com'
+                }
+                events_db.append(new_event)
+                send_notification('event_created', new_event)
+                
+                return {'success': True, 'message': 'Event created successfully', 'event': new_event}, 201
     
     @app.route('/events/<int:event_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
     def handle_event(event_id):

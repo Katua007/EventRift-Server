@@ -10,7 +10,15 @@ from eventrift.schemas.event_schema import event_schema, events_schema
 from eventrift.schemas.pagination_schema import pagination_schema
 from eventrift.models.event import Event
 # from eventrift.decorators import requires_roles  # Commented out - not needed for basic functionality
-from eventrift.utils.cloudinary_upload import upload_event_image # <-- Cloudinary Utility
+
+# Try to import Cloudinary utility, fallback if not available
+try:
+    from eventrift.utils.cloudinary_upload import upload_event_image
+    CLOUDINARY_AVAILABLE = True
+except ImportError:
+    CLOUDINARY_AVAILABLE = False
+    def upload_event_image(file):
+        return None
 
 # Create a Blueprint for event routes
 events_bp = Blueprint('events_bp', __name__)
@@ -83,32 +91,47 @@ class EventListResource(Resource):
 
         # --- 2. Cloudinary Upload (BE-301) ---
         image_url = None
-        if image_file:
+        if image_file and CLOUDINARY_AVAILABLE:
             # Upload the image and get the secure URL
             image_url = upload_event_image(image_file)
             
             if not image_url:
-                # If upload failed, stop the process and notify the user
-                return {"success": False, "message": "Image upload failed. Check Cloudinary settings or file format."}, 500
+                # If upload failed, continue without image
+                print("Image upload failed, continuing without image")
         
         # Inject the resulting URL into the data for Marshmallow validation
-        event_data['image_url'] = image_url 
+        event_data['image_url'] = image_url
 
         try:
             # --- 3. Validate and Deserialize (BE-204) ---
+            # Don't use post_load to create the object, just validate the data
             validated_data = event_schema.load(event_data)
             
             # --- 4. Create and Save Event ---
-            new_event = Event(**validated_data)
-            new_event.organizer_id = current_user_id 
+            # Remove the post_load created object and create manually
+            if isinstance(validated_data, Event):
+                new_event = validated_data
+                new_event.organizer_id = current_user_id
+            else:
+                # Create event manually from validated data
+                new_event = Event(
+                    name=validated_data['name'],
+                    description=validated_data['description'],
+                    location=validated_data['location'],
+                    date_time=validated_data['date_time'],
+                    ticket_price=validated_data['ticket_price'],
+                    capacity=validated_data['capacity'],
+                    image_url=validated_data.get('image_url'),
+                    organizer_id=current_user_id
+                )
             
-            new_event.save() 
+            new_event.save()
             
             # --- 5. Return Response ---
             result = event_schema.dump(new_event)
             return {
-                "success": True, 
-                "message": "Event created successfully.", 
+                "success": True,
+                "message": "Event created successfully.",
                 "event": result
             }, 201
 
@@ -118,7 +141,8 @@ class EventListResource(Resource):
             
         except Exception as e:
             print(f"Error creating event: {e}")
-            return {"success": False, "message": "An unexpected error occurred."}, 500
+            db.session.rollback()  # Rollback any partial changes
+            return {"success": False, "message": f"An unexpected error occurred: {str(e)}"}, 500
 
 class OrganizerEventsResource(Resource):
 

@@ -16,6 +16,7 @@ class Event(db.Model):
     
     image_url = db.Column(db.String(500), nullable=True) # Optional image link
     is_published = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default='Active', nullable=False)  # Active, Inactive, Cancelled
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -26,14 +26,12 @@ class EventSchema(Schema):
     
     image_url = fields.Url(allow_none=True, required=False)
     is_published = fields.Bool(dump_only=True)
+    status = fields.Str(dump_only=True)
     
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
 
-    @post_load
-    def make_event(self, data, **kwargs):
-        """Turn validated data into an Event model instance."""
-        return Event(**data)
+    # Removed post_load to handle object creation manually in the route
 
 # Instance for single event serialization/deserialization
 event_schema = EventSchema()
