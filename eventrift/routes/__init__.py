@@ -6,8 +6,13 @@ def initialize_routes(app):
     # Register auth blueprint
     app.register_blueprint(auth_bp, url_prefix='/auth')
 
-    # Initialize vendor routes
-    initialize_vendor_routes(app.api)
+    # Initialize vendor routes - get the api object from extensions
+    try:
+        from eventrift.extensions import api
+        initialize_vendor_routes(api)
+    except ImportError:
+        # Fallback: skip vendor routes if extensions not available
+        pass
     
     # Register other route blueprints if they exist
     try:
