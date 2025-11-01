@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify
 from flask_restful import Resource, Api
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app import db # Assuming db is available
-from app.models.ticket_attendance import Ticket, Attendance
-from app.schemas.ticket_schemas import tickets_schema, ticket_schema
+from eventrift.extensions import db
+from eventrift.models.ticket_attendance import Ticket, Attendance
+from eventrift.schemas.ticket_schemas import tickets_schema, ticket_schema
 from sqlalchemy.orm import joinedload
 from datetime import datetime
+import base64
 
 # Assuming User and Event models are available for relationships
 # from app.models.user_models import User

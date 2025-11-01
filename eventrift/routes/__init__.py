@@ -28,8 +28,8 @@ def initialize_routes(app):
         pass
     
     try:
-        from eventrift.routes.ticket_routes import tickets_bp
-        app.register_blueprint(tickets_bp, url_prefix='/api')
+        from eventrift.routes.ticket_routes import ticket_bp
+        app.register_blueprint(ticket_bp, url_prefix='/api/tickets')
     except ImportError:
         pass
     
@@ -41,12 +41,18 @@ def initialize_routes(app):
     
     try:
         from eventrift.routes.payments_routes import payments_bp
-        app.register_blueprint(payments_bp, url_prefix='/api')
+        app.register_blueprint(payments_bp, url_prefix='/api/payments')
     except ImportError:
         pass
     
     try:
         from eventrift.routes.user_routes import users_bp
         app.register_blueprint(users_bp, url_prefix='/api')
+    except ImportError:
+        pass
+    
+    try:
+        from eventrift.routes.data_retrieval_routes import data_retrieval_bp
+        app.register_blueprint(data_retrieval_bp, url_prefix='/api/data')
     except ImportError:
         pass

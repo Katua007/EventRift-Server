@@ -1,7 +1,6 @@
 from datetime import datetime
-# Assuming 'db' is initialized in app/__init__.py
-from app import db 
-import uuid 
+from eventrift.extensions import db
+import uuid
 
 # NOTE: Assuming you have 'users' and 'events' tables defined elsewhere for foreign keys
 

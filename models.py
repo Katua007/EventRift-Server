@@ -7,6 +7,9 @@ try:
     from eventrift.models.user import User
     from eventrift.models.event import Event
     from eventrift.models.vendor_service import VendorService
+    from eventrift.models.payment import Payment
+    from eventrift.models.ticket_attendance import Ticket, Attendance
+    from eventrift.models.stall_booking import StallType, StallPayment, StallBooking
 except ImportError:
     # Fallback - create basic models
     from flask_sqlalchemy import SQLAlchemy
@@ -22,11 +25,11 @@ except ImportError:
         id = db.Column(db.Integer, primary_key=True)
         title = db.Column(db.String(200), nullable=False)
         description = db.Column(db.Text)
-        organizer_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+        organizer_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     
     class VendorService(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(200), nullable=False)
-        vendor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+        vendor_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 
-__all__ = ['db', 'User', 'Event', 'VendorService']
+__all__ = ['db', 'User', 'Event', 'VendorService', 'Payment', 'Ticket', 'Attendance', 'StallType', 'StallPayment', 'StallBooking']

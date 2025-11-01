@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy.ext.hybrid import hybrid_property
-from app import db # Assuming 'db' is initialized in app/__init__.py
+from eventrift.extensions import db
 import uuid
 import base64
 
@@ -29,8 +29,8 @@ class Ticket(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    # user = db.relationship("User", backref="tickets") # Assuming a User model exists
-    # event = db.relationship("Event", backref="tickets") # Assuming an Event model exists
+    user = db.relationship("User", backref="tickets")
+    event = db.relationship("Event", backref="tickets")
     attendance = db.relationship("Attendance", uselist=False, backref="ticket", cascade="all, delete-orphan")
 
     def __repr__(self):
