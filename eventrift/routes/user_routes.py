@@ -78,8 +78,24 @@ def login():
 @jwt_required()
 def protected():
     # Example of getting user data from the token payload
-    current_user_id = get_jwt_identity()
-    return {'message': f'Welcome, User {current_user_id}. This route is protected!'}, 200
+    try:
+        current_user_id = get_jwt_identity()
+        # Convert to int if it's a string (JWT identity might be string)
+        if isinstance(current_user_id, str):
+            try:
+                current_user_id = int(current_user_id)
+            except ValueError:
+                # If conversion fails, try to find user by email
+                user = User.query.filter_by(email=current_user_id).first()
+                if user:
+                    current_user_id = user.id
+                else:
+                    return {'message': 'User not found'}, 404
+
+        return {'message': f'Welcome, User {current_user_id}. This route is protected!'}, 200
+    except Exception as e:
+        print(f"Error in protected route: {e}")
+        return {'message': 'Internal server error'}, 500
 
 @user_bp.route('/users', methods=['POST'])
 def register():
@@ -121,6 +137,10 @@ def register():
 @role_required('Admin') # Example of RBAC protection (Admin-only list)
 def get_users():
     # Admin-only: Get all users
-    users = User.query.all()
-    # NOTE: Use Marshmallow Schema for serialization here later
-    return [{'id': u.id, 'username': u.username, 'role': u.role} for u in users], 200
+    try:
+        users = User.query.all()
+        # NOTE: Use Marshmallow Schema for serialization here later
+        return [{'id': u.id, 'username': u.username, 'role': u.role} for u in users], 200
+    except Exception as e:
+        print(f"Error in get_users: {e}")
+        return {'message': 'Internal server error'}, 500
