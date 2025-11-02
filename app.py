@@ -447,8 +447,45 @@ def create_app():
             ]
         }
     
-    @app.route('/debug', methods=['GET', 'OPTIONS'])
-    def debug_info():
+    # Add API prefix routes
+    @app.route('/api/events', methods=['GET', 'POST', 'OPTIONS'])
+    def api_events():
+        return handle_events()
+    
+    @app.route('/api/events/<int:event_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+    def api_event(event_id):
+        return handle_event(event_id)
+    
+    @app.route('/api/services', methods=['GET', 'POST', 'OPTIONS'])
+    def api_services():
+        return handle_services()
+    
+    @app.route('/api/services/<int:service_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+    def api_service(service_id):
+        return handle_service(service_id)
+    
+    @app.route('/api/notifications', methods=['GET', 'OPTIONS'])
+    def api_notifications():
+        return get_notifications()
+    
+    @app.route('/api/dashboard/organizer', methods=['GET', 'OPTIONS'])
+    def api_organizer_dashboard():
+        return organizer_dashboard()
+    
+    @app.route('/api/dashboard/vendor', methods=['GET', 'OPTIONS'])
+    def api_vendor_dashboard():
+        return vendor_dashboard()
+    
+    @app.route('/api/health', methods=['GET', 'OPTIONS'])
+    def api_health():
+        return health()
+    
+    @app.route('/api/test', methods=['GET', 'OPTIONS'])
+    def api_test():
+        return test_cors()
+    
+    @app.route('/api/debug', methods=['GET', 'OPTIONS'])
+    def api_debug():
         if request.method == 'OPTIONS':
             return '', 204
         return {
