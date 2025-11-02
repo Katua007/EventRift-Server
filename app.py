@@ -1095,23 +1095,17 @@ def create_app():
     def api_debug():
         if request.method == 'OPTIONS':
             return '', 204
+
+        # Get all registered routes
+        all_endpoints = []
+        for rule in app.url_map.iter_rules():
+            if rule.rule.startswith('/api'):
+                methods = [method for method in rule.methods if method not in ['HEAD', 'OPTIONS']]
+                all_endpoints.append(f"{'/'.join(methods)} {rule.rule}")
+
         return {
             'success': True,
-            'endpoints': [
-                'GET/POST /api/events',
-                'GET/PUT /api/events/<id>',
-                'GET/POST /api/services',
-                'PUT /api/services/<id>',
-                'GET /api/notifications',
-                'GET /api/dashboard/organizer',
-                'GET /api/dashboard/vendor',
-                'POST /api/auth/login',
-                'POST /api/auth/register',
-                'POST /api/auth/logout',
-                'GET /api/auth/profile',
-                'POST /api/tickets/book',
-                'GET /api/tickets/user'
-            ],
+            'endpoints': sorted(all_endpoints),
             'data_counts': {
                 'events': len(events_db),
                 'services': len(services_db),
