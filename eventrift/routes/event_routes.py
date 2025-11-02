@@ -60,19 +60,25 @@ class EventListResource(Resource):
     def post(self):
         """Creates a new event, handling optional Cloudinary image upload."""
 
-        current_user_id = get_jwt_identity()
-        # Convert to int if it's a string (JWT identity might be string)
-        if isinstance(current_user_id, str):
-            try:
-                current_user_id = int(current_user_id)
-            except ValueError:
-                # If conversion fails, try to find user by email
-                from eventrift.models.user import User
-                user = User.query.filter_by(email=current_user_id).first()
-                if user:
-                    current_user_id = user.id
-                else:
-                    return {'success': False, 'message': 'User not found'}, 404
+            current_user_id = get_jwt_identity()
+            print(f"Event creation - JWT Identity: {current_user_id}, Type: {type(current_user_id)}")
+
+            # Convert to int if it's a string (JWT identity might be string)
+            if isinstance(current_user_id, str):
+                try:
+                    current_user_id = int(current_user_id)
+                    print(f"Event creation - Converted to int: {current_user_id}")
+                except ValueError:
+                    # If conversion fails, try to find user by email
+                    print(f"Event creation - Trying to find user by email: {current_user_id}")
+                    from eventrift.models.user import User
+                    user = User.query.filter_by(email=current_user_id).first()
+                    if user:
+                        current_user_id = user.id
+                        print(f"Event creation - Found user ID: {current_user_id}")
+                    else:
+                        print(f"Event creation - User not found for email: {current_user_id}")
+                        return {'success': False, 'message': 'User not found'}, 404
 
         # --- 1. Identify Data Source ---
         # request.files contains the uploaded image file (if any).
