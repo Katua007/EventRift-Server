@@ -1052,11 +1052,39 @@ def create_app():
             # For now, return mock bookings
             user_bookings = [b for b in ticket_bookings_db if b['user_email'] == 'test@example.com']
 
-            logger.info(f"User tickets retrieved: {len(user_bookings)} bookings")
+            # Enhance bookings with full event details for "upcoming events"
+            upcoming_events = []
+            for booking in user_bookings:
+                event = next((e for e in events_db if e['id'] == booking['event_id']), None)
+                if event:
+                    # Check if event is in the future
+                    from datetime import datetime
+                    event_date = datetime.fromisoformat(event['date'])
+                    current_date = datetime.now()
+
+                    if event_date >= current_date:
+                        upcoming_events.append({
+                            'booking_id': booking['id'],
+                            'event_id': booking['event_id'],
+                            'event_title': event['title'],
+                            'event_date': event['date'],
+                            'start_time': event['start_time'],
+                            'end_time': event['end_time'],
+                            'location': event['location'],
+                            'venue_name': event['venue_name'],
+                            'image': event['image'],
+                            'quantity': booking['quantity'],
+                            'total_price': booking['total_price'],
+                            'status': booking['status'],
+                            'booking_date': booking['booking_date']
+                        })
+
+            logger.info(f"User tickets retrieved: {len(user_bookings)} total bookings, {len(upcoming_events)} upcoming events")
 
             return {
                 'success': True,
-                'tickets': user_bookings
+                'tickets': user_bookings,
+                'upcoming_events': upcoming_events
             }, 200
 
         except Exception as e:
