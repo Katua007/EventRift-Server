@@ -17,7 +17,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     # Relationships (Simplified for base)
-    events_organized = db.relationship('Event', backref='organizer', lazy=True)
+    # events_organized = db.relationship('Event', backref='organizer', lazy=True)
     
     @hybrid_property
     def password_hash(self):

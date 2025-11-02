@@ -121,7 +121,7 @@ class EventListResource(Resource):
         # Transform field names and data types
         transformed_data = {}
 
-        # Map title to name
+        # Map title to name (database uses 'name' but frontend sends 'title')
         if 'title' in event_data:
             transformed_data['name'] = event_data['title']
 
