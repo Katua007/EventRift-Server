@@ -35,27 +35,49 @@ def create_app():
     app.config.from_object(Config)
     
     # Enable CORS for frontend integration
+    # Allow multiple origins for development and production
+    allowed_origins = [
+        'http://localhost:3000',      # React dev server
+        'http://localhost:5173',      # Vite dev server
+        'http://localhost:5174',      # Alternative Vite port
+        'https://*.vercel.app',       # Vercel deployments
+        'https://event-rift-client.vercel.app',  # Production frontend
+    ]
+
+    # Get frontend URL from environment or use default
     frontend_url = os.environ.get('FRONTEND_URL', 'https://event-rift-client.vercel.app')
-    
+    if frontend_url not in allowed_origins:
+        allowed_origins.append(frontend_url)
+
     # Configure CORS with proper preflight handling
     CORS(app,
-         origins=[frontend_url],
-         methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-         allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-         supports_credentials=True,
-         expose_headers=['Content-Type', 'Authorization'])
+          origins=allowed_origins,
+          methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+          allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+          supports_credentials=True,
+          expose_headers=['Content-Type', 'Authorization'])
     
     # Add explicit OPTIONS handler for all routes
     @app.before_request
     def handle_preflight():
         if request.method == "OPTIONS":
-            logger.info(f"OPTIONS preflight request received for {request.url} from origin: {request.headers.get('Origin')}")
+            origin = request.headers.get('Origin')
+            logger.info(f"OPTIONS preflight request received for {request.url} from origin: {origin}")
+            logger.info(f"Request headers: {dict(request.headers)}")
+
             response = app.make_default_options_response()
             headers = response.headers
-            headers['Access-Control-Allow-Origin'] = frontend_url
+
+            # Check if origin is allowed
+            if origin in allowed_origins or origin in ['https://*.vercel.app', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174']:
+                headers['Access-Control-Allow-Origin'] = origin
+            else:
+                headers['Access-Control-Allow-Origin'] = frontend_url
+
             headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
             headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept'
             headers['Access-Control-Allow-Credentials'] = 'true'
+            logger.info(f"CORS headers set: {headers}")
             return response, 204
 
     # Initialize extensions
@@ -109,21 +131,25 @@ def create_app():
     
     @app.route('/events', methods=['GET', 'POST', 'OPTIONS'])
     def handle_events():
+        logger.info(f"Request to /events: {request.method} from {request.remote_addr}")
+        logger.info(f"Headers: {dict(request.headers)}")
         if request.method == 'OPTIONS':
             return '', 204
-        
+
         # Try to use the proper event routes if available
         try:
             from eventrift.routes.event_routes import EventListResource
             resource = EventListResource()
-            
+
             if request.method == 'GET':
+                logger.info("Using EventListResource for GET")
                 return resource.get()
             elif request.method == 'POST':
+                logger.info("Using EventListResource for POST")
                 return resource.post()
-                
+
         except Exception as e:
-            print(f"Error using EventListResource: {e}")
+            logger.error(f"Error using EventListResource: {e}")
             # Fallback to simple implementation
             if request.method == 'GET':
                 return {'success': True, 'events': events_db}
@@ -191,21 +217,26 @@ def create_app():
     
     @app.route('/auth/login', methods=['POST', 'OPTIONS'])
     def login():
+        logger.info(f"Login request from {request.remote_addr}")
+        logger.info(f"Request headers: {dict(request.headers)}")
         if request.method == 'OPTIONS':
             return '', 204
-            
+
         data = request.get_json()
+        logger.info(f"Login data received: {data}")
         email = data.get('email')
         password = data.get('password')
-        
+
         if email and password:
             from flask_jwt_extended import create_access_token
             access_token = create_access_token(identity=email)
+            logger.info(f"Login successful for {email}")
             return {
                 'success': True,
                 'access_token': access_token,
                 'user': {'email': email, 'role': 'user'}
             }
+        logger.warning(f"Login failed - missing credentials")
         return {'success': False, 'message': 'Invalid credentials'}, 401
     
     @app.route('/auth/register', methods=['POST', 'OPTIONS'])
@@ -365,21 +396,26 @@ def create_app():
     # Add missing routes that should work
     @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
     def api_login():
+        logger.info(f"API login request from {request.remote_addr}")
+        logger.info(f"Request headers: {dict(request.headers)}")
         if request.method == 'OPTIONS':
             return '', 204
-            
+
         data = request.get_json()
+        logger.info(f"API login data: {data}")
         email = data.get('email')
         password = data.get('password')
-        
+
         if email and password:
             from flask_jwt_extended import create_access_token
             access_token = create_access_token(identity=email)
+            logger.info(f"API login successful for {email}")
             return {
                 'success': True,
                 'access_token': access_token,
                 'user': {'email': email, 'role': 'user'}
             }
+        logger.warning(f"API login failed - missing credentials")
         return {'success': False, 'message': 'Invalid credentials'}, 401
     
     @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
