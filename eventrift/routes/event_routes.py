@@ -241,11 +241,15 @@ class EventListResource(Resource):
 
         except IntegrityError as e:
             print(f"IntegrityError creating event: {e}")
+            import traceback
+            traceback.print_exc()
             db.session.rollback()
             return {"success": False, "message": "Event creation failed due to data integrity issue. Please check your input data."}, 400
 
         except Exception as e:
             print(f"Error creating event: {e}")
+            import traceback
+            traceback.print_exc()
             db.session.rollback()  # Rollback any partial changes
             return {"success": False, "message": f"An unexpected error occurred: {str(e)}"}, 500
 
