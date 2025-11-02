@@ -22,7 +22,7 @@ class Event(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    organizer = db.relationship('User', backref=db.backref('events', lazy=True))
+    # organizer = db.relationship('User', backref=db.backref('events', lazy=True))
     # Add relationship to tickets/bookings when those models are created
 
     def __repr__(self):

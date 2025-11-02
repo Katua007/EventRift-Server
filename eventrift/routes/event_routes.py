@@ -122,16 +122,22 @@ class EventListResource(Resource):
         transformed_data = {}
 
         # Map title to name (database uses 'name' but frontend sends 'title')
-        if 'title' in event_data:
+        if 'title' in event_data and event_data['title']:
             transformed_data['name'] = event_data['title']
+        else:
+            return {'success': False, 'message': 'Title is required.'}, 400
 
         # Map description (already correct)
-        if 'description' in event_data:
+        if 'description' in event_data and event_data['description']:
             transformed_data['description'] = event_data['description']
+        else:
+            return {'success': False, 'message': 'Description is required.'}, 400
 
         # Map location (already correct)
-        if 'location' in event_data:
+        if 'location' in event_data and event_data['location']:
             transformed_data['location'] = event_data['location']
+        else:
+            return {'success': False, 'message': 'Location is required.'}, 400
 
         # Combine start_date and start_time into date_time
         if 'start_date' in event_data and 'start_time' in event_data:
@@ -146,32 +152,42 @@ class EventListResource(Resource):
             transformed_data['date_time'] = f"{date_str}T{time_str}:00"
         elif 'date_time' in event_data:
             transformed_data['date_time'] = event_data['date_time']
+        else:
+            return {'success': False, 'message': 'Date and time information is required.'}, 400
 
         # Convert date_time string to datetime object for proper validation
-        if 'date_time' in transformed_data and isinstance(transformed_data['date_time'], str):
-            try:
-                transformed_data['date_time'] = datetime.fromisoformat(transformed_data['date_time'].replace('Z', '+00:00'))
-            except ValueError:
-                return {'success': False, 'message': 'Invalid date_time format. Use ISO 8601 format.'}, 400
+        if 'date_time' in transformed_data:
+            if isinstance(transformed_data['date_time'], str):
+                try:
+                    transformed_data['date_time'] = datetime.fromisoformat(transformed_data['date_time'].replace('Z', '+00:00'))
+                except ValueError:
+                    return {'success': False, 'message': 'Invalid date_time format. Use ISO 8601 format.'}, 400
+            elif isinstance(transformed_data['date_time'], datetime):
+                # Already a datetime object, keep as is
+                pass
+            else:
+                return {'success': False, 'message': 'Invalid date_time type. Must be string or datetime.'}, 400
 
         # Convert ticket_price to float
         if 'ticket_price' in event_data:
             try:
                 transformed_data['ticket_price'] = float(event_data['ticket_price'])
             except (ValueError, TypeError):
-                transformed_data['ticket_price'] = 0.0
+                return {'success': False, 'message': 'Invalid ticket_price. Must be a number.'}, 400
 
         # Convert capacity/max_attendees to int
         if 'capacity' in event_data:
             try:
                 transformed_data['capacity'] = int(event_data['capacity'])
             except (ValueError, TypeError):
-                transformed_data['capacity'] = 10
+                return {'success': False, 'message': 'Invalid capacity. Must be a number.'}, 400
         elif 'max_attendees' in event_data:
             try:
                 transformed_data['capacity'] = int(event_data['max_attendees'])
             except (ValueError, TypeError):
-                transformed_data['capacity'] = 10
+                return {'success': False, 'message': 'Invalid max_attendees. Must be a number.'}, 400
+        else:
+            return {'success': False, 'message': 'Capacity information is required.'}, 400
 
         # Handle image URL
         if 'image' in event_data and event_data['image']:
