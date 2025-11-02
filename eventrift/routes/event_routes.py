@@ -139,6 +139,11 @@ class EventListResource(Resource):
             time_str = event_data['start_time']
             # Create ISO 8601 datetime string
             transformed_data['date_time'] = f"{date_str}T{time_str}:00"
+        elif 'date' in event_data and 'start_time' in event_data:
+            date_str = event_data['date']
+            time_str = event_data['start_time']
+            # Create ISO 8601 datetime string
+            transformed_data['date_time'] = f"{date_str}T{time_str}:00"
         elif 'date_time' in event_data:
             transformed_data['date_time'] = event_data['date_time']
 
