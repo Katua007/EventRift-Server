@@ -396,7 +396,7 @@ def create_app():
 
         data = request.get_json()
         logger.info(f"API login data: {data}")
-        email = data.get('email')
+        email = data.get('email') or data.get('email_or_username')
         password = data.get('password')
 
         if email and password:
@@ -484,6 +484,62 @@ def create_app():
     def api_test():
         return test_cors()
     
+    @app.route('/api/auth/logout', methods=['POST', 'OPTIONS'])
+    def api_logout():
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        try:
+            logger.info(f"API logout request from {request.remote_addr}")
+            logger.info(f"Request headers: {dict(request.headers)}")
+
+            # Check for Authorization header (optional for logout)
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                logger.info("API logout with valid token")
+            else:
+                logger.info("API logout without token")
+
+            logger.info("API logout successful")
+            return {
+                'success': True,
+                'message': 'Logged out successfully'
+            }
+        except Exception as e:
+            logger.error(f"API logout error - {str(e)}")
+            return {'success': False, 'message': 'Logout failed'}, 500
+
+    @app.route('/api/auth/profile', methods=['GET', 'OPTIONS'])
+    def api_get_profile():
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        try:
+            logger.info(f"API profile request from {request.remote_addr}")
+            logger.info(f"Request headers: {dict(request.headers)}")
+
+            # Check for Authorization header
+            auth_header = request.headers.get('Authorization')
+            if not auth_header or not auth_header.startswith('Bearer '):
+                logger.warning("API profile failed - no token provided")
+                return {'success': False, 'message': 'No token provided'}, 401
+
+            # Mock user profile - in real app this would decode JWT
+            logger.info("API profile successful")
+            return {
+                'success': True,
+                'user': {
+                    'id': 1,
+                    'email': 'user@example.com',
+                    'name': 'User Name',
+                    'role': 'user',
+                    'username': 'User Name'
+                }
+            }
+        except Exception as e:
+            logger.error(f"API profile error - {str(e)}")
+            return {'success': False, 'message': 'Invalid token'}, 401
+
     @app.route('/api/debug', methods=['GET', 'OPTIONS'])
     def api_debug():
         if request.method == 'OPTIONS':
@@ -500,6 +556,7 @@ def create_app():
                 'GET /api/dashboard/vendor',
                 'POST /api/auth/login',
                 'POST /api/auth/register',
+                'POST /api/auth/logout',
                 'GET /api/auth/profile'
             ],
             'data_counts': {
