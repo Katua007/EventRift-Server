@@ -254,24 +254,31 @@ def create_app():
     def get_profile():
         if request.method == 'OPTIONS':
             return '', 204
-        
+
         try:
+            logger.info(f"Profile request from {request.remote_addr}")
+            logger.info(f"Request headers: {dict(request.headers)}")
+
             # Check for Authorization header
             auth_header = request.headers.get('Authorization')
             if not auth_header or not auth_header.startswith('Bearer '):
+                logger.warning("Profile failed - no token provided")
                 return {'success': False, 'message': 'No token provided'}, 401
-            
-            # Mock user profile
+
+            # Mock user profile - in real app this would decode JWT
+            logger.info("Profile successful")
             return {
                 'success': True,
                 'user': {
                     'id': 1,
                     'email': 'user@example.com',
                     'name': 'User Name',
-                    'role': 'user'
+                    'role': 'user',
+                    'username': 'User Name'
                 }
             }
         except Exception as e:
+            logger.error(f"Profile error - {str(e)}")
             return {'success': False, 'message': 'Invalid token'}, 401
     
     @app.route('/services', methods=['GET', 'POST', 'OPTIONS'])
