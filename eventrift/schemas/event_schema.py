@@ -6,7 +6,7 @@ class EventSchema(Schema):
     organizer_id = fields.Int(dump_only=True) # Organizer ID is set on the backend from auth token
     
     name = fields.Str(required=True, validate=validate.Length(min=3, max=100))
-    description = fields.Str(required=True, validate=validate.Length(min=10))
+    description = fields.Str(required=True, validate=validate.Length(min=5))
     location = fields.Str(required=True, validate=validate.Length(min=5, max=200))
     
     # Use DateTime field for ISO 8601 string input
