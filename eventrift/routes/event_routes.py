@@ -123,15 +123,20 @@ class EventListResource(Resource):
         try:
             # --- 3. Validate and Deserialize (BE-204) ---
             # Don't use post_load to create the object, just validate the data
+            print(f"Event creation - Validating data: {event_data}")
             validated_data = event_schema.load(event_data)
+            print(f"Event creation - Validation successful: {validated_data}")
             
             # --- 4. Create and Save Event ---
             # Remove the post_load created object and create manually
+            print(f"Event creation - Creating event object")
             if isinstance(validated_data, Event):
                 new_event = validated_data
                 new_event.organizer_id = current_user_id
+                print(f"Event creation - Using existing Event object")
             else:
                 # Create event manually from validated data
+                print(f"Event creation - Creating new Event object")
                 new_event = Event(
                     name=validated_data['name'],
                     description=validated_data['description'],
@@ -142,8 +147,11 @@ class EventListResource(Resource):
                     image_url=validated_data.get('image_url'),
                     organizer_id=current_user_id
                 )
-            
+                print(f"Event creation - Event object created: {new_event}")
+
+            print(f"Event creation - Saving event to database")
             new_event.save()
+            print(f"Event creation - Event saved successfully with ID: {new_event.id}")
             
             # --- 5. Return Response ---
             result = event_schema.dump(new_event)
