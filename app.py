@@ -93,6 +93,13 @@ def create_app():
     except ImportError:
         pass
 
+    # Register data retrieval routes
+    try:
+        from eventrift.routes.data_retrieval_routes import data_retrieval_bp
+        app.register_blueprint(data_retrieval_bp, url_prefix='/api/data')
+    except ImportError:
+        pass
+
     # Global storage - Events from frontend data
     events_db = [
   {
