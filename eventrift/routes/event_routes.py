@@ -5,6 +5,7 @@ from marshmallow import ValidationError
 from datetime import datetime
 import json # Used to parse JSON data if sent in a 'data' form field
 from eventrift.extensions import db # Assuming db is initialized here or passed via extensions
+from sqlalchemy.exc import IntegrityError
 
 from eventrift.schemas.event_schema import event_schema, events_schema
 from eventrift.schemas.pagination_schema import pagination_schema
@@ -80,6 +81,13 @@ class EventListResource(Resource):
                     print(f"Event creation - User not found for email: {current_user_id}")
                     return {'success': False, 'message': 'User not found'}, 404
 
+        # Verify user exists in database
+        from eventrift.models.user import User
+        user = User.query.get(current_user_id)
+        if not user:
+            print(f"Event creation - User with ID {current_user_id} not found in database")
+            return {'success': False, 'message': 'User not found'}, 404
+
         # --- 1. Identify Data Source ---
         # request.files contains the uploaded image file (if any).
         # request.form contains non-file data for multipart/form-data requests.
@@ -133,6 +141,13 @@ class EventListResource(Resource):
             transformed_data['date_time'] = f"{date_str}T{time_str}:00"
         elif 'date_time' in event_data:
             transformed_data['date_time'] = event_data['date_time']
+
+        # Convert date_time string to datetime object for proper validation
+        if 'date_time' in transformed_data and isinstance(transformed_data['date_time'], str):
+            try:
+                transformed_data['date_time'] = datetime.fromisoformat(transformed_data['date_time'].replace('Z', '+00:00'))
+            except ValueError:
+                return {'success': False, 'message': 'Invalid date_time format. Use ISO 8601 format.'}, 400
 
         # Convert ticket_price to float
         if 'ticket_price' in event_data:
@@ -223,7 +238,12 @@ class EventListResource(Resource):
         except ValidationError as err:
             # Database saving hasn't happened yet, so no cleanup needed.
             return {"success": False, "errors": err.messages}, 422
-            
+
+        except IntegrityError as e:
+            print(f"IntegrityError creating event: {e}")
+            db.session.rollback()
+            return {"success": False, "message": "Event creation failed due to data integrity issue. Please check your input data."}, 400
+
         except Exception as e:
             print(f"Error creating event: {e}")
             db.session.rollback()  # Rollback any partial changes
