@@ -59,8 +59,20 @@ class EventListResource(Resource):
     # @requires_roles('Organizer')  # Commented out for basic functionality
     def post(self):
         """Creates a new event, handling optional Cloudinary image upload."""
-        
+
         current_user_id = get_jwt_identity()
+        # Convert to int if it's a string (JWT identity might be string)
+        if isinstance(current_user_id, str):
+            try:
+                current_user_id = int(current_user_id)
+            except ValueError:
+                # If conversion fails, try to find user by email
+                from eventrift.models.user import User
+                user = User.query.filter_by(email=current_user_id).first()
+                if user:
+                    current_user_id = user.id
+                else:
+                    return {'success': False, 'message': 'User not found'}, 404
 
         # --- 1. Identify Data Source ---
         # request.files contains the uploaded image file (if any).
@@ -148,12 +160,29 @@ class OrganizerEventsResource(Resource):
 
     @jwt_required()
     def get(self):
-        current_user_id = get_jwt_identity()
-        events = Event.query.filter_by(organizer_id=current_user_id).all()
-        return {
-            'success': True,
-            'events': events_schema.dump(events)
-        }, 200
+        try:
+            current_user_id = get_jwt_identity()
+            # Convert to int if it's a string (JWT identity might be string)
+            if isinstance(current_user_id, str):
+                try:
+                    current_user_id = int(current_user_id)
+                except ValueError:
+                    # If conversion fails, try to find user by email
+                    from eventrift.models.user import User
+                    user = User.query.filter_by(email=current_user_id).first()
+                    if user:
+                        current_user_id = user.id
+                    else:
+                        return {'success': False, 'message': 'User not found'}, 404
+
+            events = Event.query.filter_by(organizer_id=current_user_id).all()
+            return {
+                'success': True,
+                'events': events_schema.dump(events)
+            }, 200
+        except Exception as e:
+            print(f"Error in OrganizerEventsResource.get: {e}")
+            return {'success': False, 'message': 'Internal server error'}, 500
 
 # Register the resources with the API blueprint
 api.add_resource(EventListResource, '/events')
