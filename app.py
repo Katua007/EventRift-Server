@@ -42,6 +42,7 @@ def create_app():
         'http://localhost:5174',      # Alternative Vite port
         'https://*.vercel.app',       # Vercel deployments
         'https://event-rift-client.vercel.app',  # Production frontend
+        'https://eventrift-server.onrender.com',  # Production backend
     ]
 
     # Get frontend URL from environment or use default
