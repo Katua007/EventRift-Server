@@ -86,13 +86,6 @@ def create_app():
     api.init_app(app)
     jwt.init_app(app)
 
-    # Register blueprints if available
-    try:
-        from eventrift.routes.event_routes import events_bp
-        app.register_blueprint(events_bp, url_prefix='/')
-    except ImportError:
-        pass
-
     # Initialize routes
     try:
         from eventrift.routes import initialize_routes
