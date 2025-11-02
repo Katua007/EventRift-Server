@@ -107,18 +107,73 @@ class EventListResource(Resource):
         if not event_data:
             return {'message': 'No event data provided.'}, 400
 
-        # --- 2. Cloudinary Upload (BE-301) ---
+        # --- 2. Transform frontend data to backend format ---
+        print(f"Event creation - Raw frontend data: {event_data}")
+
+        # Transform field names and data types
+        transformed_data = {}
+
+        # Map title to name
+        if 'title' in event_data:
+            transformed_data['name'] = event_data['title']
+
+        # Map description (already correct)
+        if 'description' in event_data:
+            transformed_data['description'] = event_data['description']
+
+        # Map location (already correct)
+        if 'location' in event_data:
+            transformed_data['location'] = event_data['location']
+
+        # Combine start_date and start_time into date_time
+        if 'start_date' in event_data and 'start_time' in event_data:
+            date_str = event_data['start_date']
+            time_str = event_data['start_time']
+            # Create ISO 8601 datetime string
+            transformed_data['date_time'] = f"{date_str}T{time_str}:00"
+        elif 'date_time' in event_data:
+            transformed_data['date_time'] = event_data['date_time']
+
+        # Convert ticket_price to float
+        if 'ticket_price' in event_data:
+            try:
+                transformed_data['ticket_price'] = float(event_data['ticket_price'])
+            except (ValueError, TypeError):
+                transformed_data['ticket_price'] = 0.0
+
+        # Convert capacity/max_attendees to int
+        if 'capacity' in event_data:
+            try:
+                transformed_data['capacity'] = int(event_data['capacity'])
+            except (ValueError, TypeError):
+                transformed_data['capacity'] = 10
+        elif 'max_attendees' in event_data:
+            try:
+                transformed_data['capacity'] = int(event_data['max_attendees'])
+            except (ValueError, TypeError):
+                transformed_data['capacity'] = 10
+
+        # Handle image URL
+        if 'image' in event_data and event_data['image']:
+            transformed_data['image_url'] = event_data['image']
+
+        print(f"Event creation - Transformed data: {transformed_data}")
+
+        # --- 3. Cloudinary Upload (BE-301) ---
         image_url = None
         if image_file and CLOUDINARY_AVAILABLE:
             # Upload the image and get the secure URL
             image_url = upload_event_image(image_file)
-            
+
             if not image_url:
                 # If upload failed, continue without image
                 print("Image upload failed, continuing without image")
-        
+
         # Inject the resulting URL into the data for Marshmallow validation
-        event_data['image_url'] = image_url
+        if image_url:
+            transformed_data['image_url'] = image_url
+
+        event_data = transformed_data
 
         try:
             # --- 3. Validate and Deserialize (BE-204) ---
