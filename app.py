@@ -227,7 +227,12 @@ def create_app():
             return {
                 'success': True,
                 'access_token': access_token,
-                'user': {'email': email, 'role': 'user'}
+                'user': {
+                    'email': email,
+                    'username': email.split('@')[0] if '@' in email else email,
+                    'name': email.split('@')[0] if '@' in email else email,
+                    'role': 'user'
+                }
             }
         logger.warning(f"Login failed - missing credentials")
         return {'success': False, 'message': 'Invalid credentials'}, 401
@@ -241,12 +246,17 @@ def create_app():
         email = data.get('email')
         password = data.get('password')
         name = data.get('name') or data.get('username')
-        
+
         if email and password and name:
             return {
                 'success': True,
                 'message': 'User registered successfully',
-                'user': {'email': email, 'name': name, 'role': 'user'}
+                'user': {
+                    'email': email,
+                    'username': name,
+                    'name': name,
+                    'role': 'user'
+                }
             }, 201
         return {'success': False, 'message': 'Missing required fields'}, 400
     
@@ -413,7 +423,12 @@ def create_app():
             return {
                 'success': True,
                 'access_token': access_token,
-                'user': {'email': email, 'role': 'user'}
+                'user': {
+                    'email': email,
+                    'username': email.split('@')[0] if '@' in email else email,
+                    'name': email.split('@')[0] if '@' in email else email,
+                    'role': 'user'
+                }
             }
         logger.warning(f"API login failed - missing credentials")
         return {'success': False, 'message': 'Invalid credentials'}, 401
@@ -427,12 +442,17 @@ def create_app():
         email = data.get('email')
         password = data.get('password')
         name = data.get('name') or data.get('username')
-        
+
         if email and password and name:
             return {
                 'success': True,
                 'message': 'User registered successfully',
-                'user': {'email': email, 'name': name, 'role': 'user'}
+                'user': {
+                    'email': email,
+                    'username': name,
+                    'name': name,
+                    'role': 'user'
+                }
             }, 201
         return {'success': False, 'message': 'Missing required fields'}, 400
     
@@ -547,6 +567,97 @@ def create_app():
             logger.error(f"API profile error - {str(e)}")
             return {'success': False, 'message': 'Invalid token'}, 401
 
+    # Ticket booking functionality
+    ticket_bookings_db = []
+
+    @app.route('/api/tickets/book', methods=['POST', 'OPTIONS'])
+    def book_ticket():
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        try:
+            logger.info("Ticket booking request received")
+            logger.info(f"Request headers: {dict(request.headers)}")
+
+            # Check for Authorization header
+            auth_header = request.headers.get('Authorization')
+            if not auth_header or not auth_header.startswith('Bearer '):
+                logger.warning("Ticket booking failed - no token provided")
+                return {'success': False, 'message': 'Authentication required'}, 401
+
+            data = request.get_json()
+            logger.info(f"Ticket booking data: {data}")
+
+            event_id = data.get('event_id')
+            quantity = data.get('quantity', 1)
+            user_email = data.get('user_email')  # From JWT token in real app
+
+            if not event_id:
+                return {'success': False, 'message': 'Event ID is required'}, 400
+
+            # Find the event
+            event = next((e for e in events_db if e['id'] == event_id), None)
+            if not event:
+                return {'success': False, 'message': 'Event not found'}, 404
+
+            # Calculate total price
+            total_price = event['ticket_price'] * quantity
+
+            # Create booking
+            booking = {
+                'id': len(ticket_bookings_db) + 1,
+                'event_id': event_id,
+                'user_email': user_email or 'test@example.com',
+                'quantity': quantity,
+                'total_price': total_price,
+                'status': 'CONFIRMED',
+                'booking_date': __import__('datetime').datetime.now().isoformat(),
+                'event_title': event['title']
+            }
+
+            ticket_bookings_db.append(booking)
+            logger.info(f"Ticket booking successful: {booking}")
+
+            return {
+                'success': True,
+                'message': f'Successfully booked {quantity} ticket(s) for {event["title"]}',
+                'booking': booking
+            }, 201
+
+        except Exception as e:
+            logger.error(f"Ticket booking error - {str(e)}")
+            return {'success': False, 'message': 'Booking failed'}, 500
+
+    @app.route('/api/tickets/user', methods=['GET', 'OPTIONS'])
+    def get_user_tickets():
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        try:
+            logger.info("User tickets request received")
+            logger.info(f"Request headers: {dict(request.headers)}")
+
+            # Check for Authorization header
+            auth_header = request.headers.get('Authorization')
+            if not auth_header or not auth_header.startswith('Bearer '):
+                logger.warning("User tickets failed - no token provided")
+                return {'success': False, 'message': 'Authentication required'}, 401
+
+            # In a real app, you'd decode the JWT to get user email
+            # For now, return mock bookings
+            user_bookings = [b for b in ticket_bookings_db if b['user_email'] == 'test@example.com']
+
+            logger.info(f"User tickets retrieved: {len(user_bookings)} bookings")
+
+            return {
+                'success': True,
+                'tickets': user_bookings
+            }, 200
+
+        except Exception as e:
+            logger.error(f"User tickets error - {str(e)}")
+            return {'success': False, 'message': 'Failed to retrieve tickets'}, 500
+
     @app.route('/api/debug', methods=['GET', 'OPTIONS'])
     def api_debug():
         if request.method == 'OPTIONS':
@@ -564,12 +675,15 @@ def create_app():
                 'POST /api/auth/login',
                 'POST /api/auth/register',
                 'POST /api/auth/logout',
-                'GET /api/auth/profile'
+                'GET /api/auth/profile',
+                'POST /api/tickets/book',
+                'GET /api/tickets/user'
             ],
             'data_counts': {
                 'events': len(events_db),
                 'services': len(services_db),
-                'notifications': len(notifications_db)
+                'notifications': len(notifications_db),
+                'ticket_bookings': len(ticket_bookings_db)
             }
         }
     
