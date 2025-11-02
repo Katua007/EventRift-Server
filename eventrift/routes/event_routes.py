@@ -179,8 +179,12 @@ class EventListResource(Resource):
             # --- 3. Validate and Deserialize (BE-204) ---
             # Don't use post_load to create the object, just validate the data
             print(f"Event creation - Validating data: {event_data}")
-            validated_data = event_schema.load(event_data)
-            print(f"Event creation - Validation successful: {validated_data}")
+            try:
+                validated_data = event_schema.load(event_data)
+                print(f"Event creation - Validation successful: {validated_data}")
+            except Exception as validation_error:
+                print(f"Event creation - Validation failed: {validation_error}")
+                return {"success": False, "message": f"Validation error: {str(validation_error)}"}, 400
             
             # --- 4. Create and Save Event ---
             # Remove the post_load created object and create manually
