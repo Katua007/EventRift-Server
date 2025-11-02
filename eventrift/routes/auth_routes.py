@@ -38,7 +38,7 @@ def register():
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
-        name = data.get('name')
+        name = data.get('name') or data.get('username')
 
         if email and password and name:
             return {
@@ -54,6 +54,23 @@ def register():
         return {'success': False, 'message': 'Missing required fields'}, 400
 
     except Exception as e:
+        return {'success': False, 'message': str(e)}, 500
+
+@auth_bp.route('/logout', methods=['POST'])
+def logout():
+    """Logout endpoint for frontend"""
+    try:
+        print("🔐 Backend Auth: Logout request received")
+
+        # For logout, we just return success since session cleanup is handled on frontend
+        print("🔐 Backend Auth: Logout successful")
+        return {
+            'success': True,
+            'message': 'Logged out successfully'
+        }, 200
+
+    except Exception as e:
+        print(f"🔐 Backend Auth: Logout error - {str(e)}")
         return {'success': False, 'message': str(e)}, 500
 
 @auth_bp.route('/profile', methods=['GET'])
