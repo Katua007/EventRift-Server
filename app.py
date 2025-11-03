@@ -194,6 +194,7 @@ def create_app():
         except Exception as e:
             return {'success': False, 'message': 'Login failed'}, 401
 
+    @app.route('/auth/profile', methods=['GET', 'OPTIONS'])
     @app.route('/api/auth/profile', methods=['GET', 'OPTIONS'])
     def get_profile():
         if request.method == 'OPTIONS':
