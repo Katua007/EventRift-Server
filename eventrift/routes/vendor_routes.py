@@ -1,9 +1,16 @@
+# Import Flask-RESTful for API resources
 from flask_restful import Resource
+# Import Flask request object
 from flask import request
+# Import the VendorService model
 from eventrift.models.vendor_service import VendorService
+# Import database instance
 from eventrift.extensions import db
+# Import Marshmallow schemas for data validation and serialization
 from eventrift.schemas.vendor_service_schema import vendor_service_schema, vendor_services_schema
+# Import JWT authentication decorators
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+# Import role-based access control decorator
 from eventrift.routes.user_routes import role_required
 
 class VendorServiceListResource(Resource):
