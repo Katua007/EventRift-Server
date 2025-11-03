@@ -6,18 +6,21 @@ class Event(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     organizer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
+
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
     location = db.Column(db.String(200), nullable=False)
     date_time = db.Column(db.DateTime, nullable=False) # Store date and time together
     ticket_price = db.Column(db.Numeric(10, 2), nullable=False) # Price in KES
     capacity = db.Column(db.Integer, nullable=False)
-    
+
     image_url = db.Column(db.String(500), nullable=True) # Optional image link
     is_published = db.Column(db.Boolean, default=False)
     status = db.Column(db.String(20), default='Active', nullable=False)  # Active, Inactive, Cancelled
-    
+
+    # Add category relationship
+    category_id = db.Column(db.Integer, db.ForeignKey('event_categories.id'), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

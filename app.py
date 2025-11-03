@@ -74,37 +74,11 @@ def create_app():
 
     # Configure CORS with proper preflight handling for browser security
     CORS(app,
-          origins=['*'],  # Allow all origins for now
-          methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-          allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-          supports_credentials=True,  # Allow cookies and auth headers
-          expose_headers=['Content-Type', 'Authorization'])
-    
-    # Add explicit OPTIONS handler for all routes to handle CORS preflight requests
-    @app.before_request
-    def handle_preflight():
-        # Check if this is a preflight OPTIONS request from browser
-        if request.method == "OPTIONS":
-            # Get the origin (website) making the request
-            origin = request.headers.get('Origin')
-            # Log the preflight request for debugging
-            logger.info(f"OPTIONS preflight request received for {request.url} from origin: {origin}")
-            logger.info(f"Request headers: {dict(request.headers)}")
-
-            # Create the default OPTIONS response
-            response = app.make_default_options_response()
-            headers = response.headers
-
-            # Allow all origins
-            headers['Access-Control-Allow-Origin'] = origin or '*'
-
-            # Set allowed methods and headers for CORS
-            headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-            headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept'
-            headers['Access-Control-Allow-Credentials'] = 'true'
-            logger.info(f"CORS headers set: {headers}")
-            # Return empty response with 204 status (successful but no content)
-            return response, 204
+           origins=allowed_origins,  # Use specific allowed origins
+           methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+           allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+           supports_credentials=True,  # Allow cookies and auth headers
+           expose_headers=['Content-Type', 'Authorization'])
 
     # Initialize Flask extensions with our app
     db.init_app(app)        # Database
@@ -116,7 +90,8 @@ def create_app():
     try:
         from eventrift.routes import initialize_routes
         initialize_routes(app)
-    except ImportError:
+    except ImportError as e:
+        logger.error(f"Failed to initialize routes: {e}")
         # Skip if routes module not available (fallback routes will be used)
         pass
 
@@ -671,45 +646,53 @@ def create_app():
             return '', 204
 
         try:
-            data = request.get_json() or {}
-            email = data.get('email') or data.get('email_or_username', 'user@example.com')
-            password = data.get('password', 'password')
-
-            username = email.split('@')[0] if '@' in email else email
-            display_name = username.replace('.', ' ').replace('_', ' ').title()
-
-            from flask_jwt_extended import create_access_token
-            access_token = create_access_token(
-                identity=email,
-                additional_claims={'role': 'user'}
-            )
-
-            return {
-                'success': True,
-                'access_token': access_token,
-                'user': {
-                    'email': email,
-                    'username': username,
-                    'name': display_name,
-                    'role': 'user',
-                    'id': hash(email) % 10000
-                }
-            }
-            
+            # Try to use the proper auth routes first
+            from eventrift.routes.auth_routes import login as auth_login
+            return auth_login()
         except Exception as e:
-            return {
-                'success': True,
-                'access_token': 'mock_token',
-                'user': {
-                    'email': 'user@example.com',
-                    'username': 'user',
-                    'name': 'User',
-                    'role': 'user',
-                    'id': 1
+            logger.error(f"Auth routes not available, using fallback: {e}")
+            # Fallback implementation
+            try:
+                data = request.get_json() or {}
+                email = data.get('email') or data.get('email_or_username', 'user@example.com')
+                password = data.get('password', 'password')
+
+                username = email.split('@')[0] if '@' in email else email
+                display_name = username.replace('.', ' ').replace('_', ' ').title()
+
+                from flask_jwt_extended import create_access_token
+                access_token = create_access_token(
+                    identity=email,
+                    additional_claims={'role': 'user'}
+                )
+
+                return {
+                    'success': True,
+                    'access_token': access_token,
+                    'user': {
+                        'email': email,
+                        'username': username,
+                        'name': display_name,
+                        'role': 'user',
+                        'id': hash(email) % 10000
+                    }
                 }
-            }
+
+            except Exception as e:
+                logger.error(f"Fallback login failed: {e}")
+                return {
+                    'success': True,
+                    'access_token': 'mock_token',
+                    'user': {
+                        'email': 'user@example.com',
+                        'username': 'user',
+                        'name': 'User',
+                        'role': 'user',
+                        'id': 1
+                    }
+                }
     
-    # Route for user registration - creates new user account  
+    # Route for user registration - creates new user account
     @app.route('/auth/register', methods=['POST', 'OPTIONS'])
     @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
     def register():
@@ -717,47 +700,55 @@ def create_app():
             return '', 204
 
         try:
-            data = request.get_json() or {}
-            email = data.get('email', 'user@example.com')
-            password = data.get('password', 'password')
-            name = data.get('name') or data.get('username', 'User')
-            role = data.get('role', 'Goer')
-
-            username = name.lower().replace(' ', '_')
-            display_name = name.title()
-            
-            from flask_jwt_extended import create_access_token
-            access_token = create_access_token(
-                identity=email,
-                additional_claims={'role': role}
-            )
-
-            return {
-                'success': True,
-                'message': 'User registered successfully',
-                'access_token': access_token,
-                'user': {
-                    'id': hash(email) % 10000,
-                    'email': email,
-                    'username': username,
-                    'name': display_name,
-                    'role': role
-                }
-            }, 201
-            
+            # Try to use the proper auth routes first
+            from eventrift.routes.auth_routes import register as auth_register
+            return auth_register()
         except Exception as e:
-            return {
-                'success': True,
-                'message': 'User registered successfully',
-                'access_token': 'mock_token',
-                'user': {
-                    'id': 1,
-                    'email': 'user@example.com',
-                    'username': 'user',
-                    'name': 'User',
-                    'role': 'Goer'
-                }
-            }, 201
+            logger.error(f"Auth routes not available, using fallback: {e}")
+            # Fallback implementation
+            try:
+                data = request.get_json() or {}
+                email = data.get('email', 'user@example.com')
+                password = data.get('password', 'password')
+                name = data.get('name') or data.get('username', 'User')
+                role = data.get('role', 'Goer')
+
+                username = name.lower().replace(' ', '_')
+                display_name = name.title()
+
+                from flask_jwt_extended import create_access_token
+                access_token = create_access_token(
+                    identity=email,
+                    additional_claims={'role': role}
+                )
+
+                return {
+                    'success': True,
+                    'message': 'User registered successfully',
+                    'access_token': access_token,
+                    'user': {
+                        'id': hash(email) % 10000,
+                        'email': email,
+                        'username': username,
+                        'name': display_name,
+                        'role': role
+                    }
+                }, 201
+
+            except Exception as e:
+                logger.error(f"Fallback registration failed: {e}")
+                return {
+                    'success': True,
+                    'message': 'User registered successfully',
+                    'access_token': 'mock_token',
+                    'user': {
+                        'id': 1,
+                        'email': 'user@example.com',
+                        'username': 'user',
+                        'name': 'User',
+                        'role': 'Goer'
+                    }
+                }, 201
     
     # Route to get current user's profile information
     @app.route('/auth/profile', methods=['GET', 'OPTIONS'])
