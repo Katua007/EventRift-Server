@@ -1085,7 +1085,77 @@ def create_app():
 
     @app.route('/api/dashboard/organizer', methods=['GET', 'OPTIONS'])
     def api_organizer_dashboard():
-        return organizer_dashboard()
+        # Handle preflight requests
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        try:
+            # Check if user is authenticated
+            auth_header = request.headers.get('Authorization')
+            if not auth_header or not auth_header.startswith('Bearer '):
+                return {'success': False, 'message': 'Authentication required'}, 401
+
+            # Get all events created by this organizer (mock data for now)
+            organizer_events = [e for e in events_db if e.get('organizer_id') == 'organizer@example.com']
+
+            # Calculate comprehensive metrics
+            total_events = len(organizer_events)
+            total_tickets_sold = sum(event.get('tickets_sold', 0) for event in organizer_events)
+            total_revenue = sum(event.get('tickets_sold', 0) * event.get('ticket_price', 0) for event in organizer_events)
+
+            # Separate upcoming and past events
+            upcoming_events = []
+            past_events = []
+            from datetime import datetime
+            current_date = datetime.now()
+
+            for event in organizer_events:
+                try:
+                    event_date = datetime.fromisoformat(event['date'])
+                    if event_date >= current_date:
+                        upcoming_events.append(event)
+                    else:
+                        past_events.append(event)
+                except (ValueError, KeyError):
+                    # If date parsing fails, consider it upcoming
+                    upcoming_events.append(event)
+
+            # Get recent events (last 5 by date)
+            recent_events = sorted(organizer_events, key=lambda x: x.get('date', ''), reverse=True)[:5]
+
+            # Calculate attendance rate (mock data)
+            avg_attendance_rate = 85.5  # Mock percentage
+
+            # Popular event categories
+            categories = {}
+            for event in organizer_events:
+                category = event.get('category', 'Other')
+                categories[category] = categories.get(category, 0) + 1
+
+            top_category = max(categories.items(), key=lambda x: x[1])[0] if categories else 'None'
+
+            return {
+                'success': True,
+                'events': organizer_events,
+                'total_events': total_events,
+                'upcoming_events': len(upcoming_events),
+                'past_events': len(past_events),
+                'total_tickets_sold': total_tickets_sold,
+                'total_revenue': total_revenue,
+                'avg_attendance_rate': avg_attendance_rate,
+                'top_category': top_category,
+                'recent_events': recent_events,
+                'upcoming_events_list': upcoming_events[:3],  # Next 3 upcoming events
+                'monthly_stats': {
+                    'this_month_events': len([e for e in organizer_events if e.get('date', '').startswith('2025-11')]),
+                    'this_month_revenue': sum(e.get('tickets_sold', 0) * e.get('ticket_price', 0) for e in organizer_events if e.get('date', '').startswith('2025-11')),
+                    'this_month_tickets': sum(e.get('tickets_sold', 0) for e in organizer_events if e.get('date', '').startswith('2025-11'))
+                }
+            }, 200
+
+        except Exception as e:
+            logger.error(f"Organizer dashboard error - {str(e)}")
+            return {'success': False, 'message': 'Failed to load organizer dashboard'}, 500
 
     @app.route('/api/dashboard/goer', methods=['GET', 'OPTIONS'])
     def api_goer_dashboard():
@@ -1158,7 +1228,85 @@ def create_app():
 
     @app.route('/api/dashboard/vendor', methods=['GET', 'OPTIONS'])
     def api_vendor_dashboard():
-        return vendor_dashboard()
+        # Handle preflight requests
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        try:
+            # Check if user is authenticated
+            auth_header = request.headers.get('Authorization')
+            if not auth_header or not auth_header.startswith('Bearer '):
+                return {'success': False, 'message': 'Authentication required'}, 401
+
+            # Get all services offered by this vendor
+            vendor_services = [s for s in services_db if s.get('vendor_id') == 'vendor@example.com']
+
+            # Calculate comprehensive metrics
+            total_services = len(vendor_services)
+            total_revenue = sum(service.get('price', 0) for service in vendor_services)
+
+            # Calculate total bookings (mock data - in real app this would be from booking records)
+            total_bookings = sum(len([b for b in ticket_bookings_db if any(s['id'] == b.get('service_id') for s in vendor_services)]) for s in vendor_services)
+
+            # Group services by category with counts and revenue
+            services_by_category = {}
+            category_revenue = {}
+            category_bookings = {}
+
+            for service in vendor_services:
+                category = service.get('category', 'Other')
+
+                if category not in services_by_category:
+                    services_by_category[category] = []
+                    category_revenue[category] = 0
+                    category_bookings[category] = 0
+
+                services_by_category[category].append(service)
+                category_revenue[category] += service.get('price', 0)
+                # Mock booking calculation per service
+                category_bookings[category] += len([b for b in ticket_bookings_db if b.get('service_id') == service.get('id')])
+
+            # Calculate average service price
+            avg_service_price = total_revenue / total_services if total_services > 0 else 0
+
+            # Get most popular category
+            most_popular_category = max(category_bookings.items(), key=lambda x: x[1])[0] if category_bookings else 'None'
+
+            # Get recent services (last 5 by ID)
+            recent_services = sorted(vendor_services, key=lambda x: x.get('id', 0), reverse=True)[:5]
+
+            # Calculate monthly stats (mock data)
+            monthly_revenue = sum(s.get('price', 0) for s in vendor_services) * 0.3  # Mock 30% monthly
+            monthly_bookings = int(total_bookings * 0.4)  # Mock 40% monthly
+
+            return {
+                'success': True,
+                'services': vendor_services,
+                'total_services': total_services,
+                'total_bookings': total_bookings,
+                'total_revenue': total_revenue,
+                'avg_service_price': avg_service_price,
+                'services_by_category': services_by_category,
+                'categories_count': len(services_by_category),
+                'category_revenue': category_revenue,
+                'category_bookings': category_bookings,
+                'most_popular_category': most_popular_category,
+                'recent_services': recent_services,
+                'monthly_stats': {
+                    'this_month_revenue': monthly_revenue,
+                    'this_month_bookings': monthly_bookings,
+                    'this_month_services': len([s for s in vendor_services if s.get('id', 0) > 5])  # Mock recent services
+                },
+                'performance_metrics': {
+                    'customer_satisfaction': 4.6,  # Mock rating
+                    'response_time': '2.3 hours',  # Mock response time
+                    'completion_rate': 94.2  # Mock completion percentage
+                }
+            }, 200
+
+        except Exception as e:
+            logger.error(f"Vendor dashboard error - {str(e)}")
+            return {'success': False, 'message': 'Failed to load vendor dashboard'}, 500
     
     @app.route('/api/health', methods=['GET', 'OPTIONS'])
     def api_health():
