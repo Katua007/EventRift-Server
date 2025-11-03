@@ -171,15 +171,18 @@ def create_app():
             data = request.get_json() or {}
             email = data.get('email', 'user@example.com')
             
-            # Check if user was registered offline with role
-            offline_users = __import__('json').loads(localStorage.getItem('offline_users') or '[]') if 'localStorage' in globals() else []
-            user_role = 'Goer'  # Default role
-            
             # Simple role detection based on email/username
             username = email.split('@')[0] if '@' in email else email
-            if 'organizer' in username.lower() or 'groom' in username.lower():
+            user_role = 'Goer'  # Default role
+            
+            # Check email and username for role indicators
+            email_lower = email.lower()
+            username_lower = username.lower()
+            
+            if ('organizer' in email_lower or 'organizer' in username_lower or 
+                'groom' in email_lower or 'groom' in username_lower):
                 user_role = 'Organizer'
-            elif 'vendor' in username.lower():
+            elif ('vendor' in email_lower or 'vendor' in username_lower):
                 user_role = 'Vendor'
             
             display_name = username.replace('.', ' ').replace('_', ' ').title()
