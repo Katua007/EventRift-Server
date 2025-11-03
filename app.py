@@ -90,9 +90,10 @@ def create_app():
     try:
         from eventrift.routes import initialize_routes
         initialize_routes(app)
+        logger.info("Blueprint routes initialized successfully")
     except ImportError as e:
-        logger.error(f"Failed to initialize routes: {e}")
         # Skip if routes module not available (fallback routes will be used)
+        logger.warning(f"Blueprint routes not available: {e}")
         pass
 
     # Global storage - Events data (like a simple database in memory)
@@ -645,16 +646,11 @@ def create_app():
         if request.method == 'OPTIONS':
             return '', 204
 
-        logger.info("Login request received")
         try:
             data = request.get_json() or {}
-            logger.info(f"Login data: {data}")
-
-            # Simple mock authentication for deployment stability
             email = data.get('email', 'user@example.com')
-            password = data.get('password', 'password')
-
-            # Always return success for now to avoid database issues
+            
+            # Fast mock authentication
             username = email.split('@')[0] if '@' in email else email
             display_name = username.replace('.', ' ').replace('_', ' ').title()
 
@@ -664,7 +660,6 @@ def create_app():
                 additional_claims={'role': 'Goer'}
             )
 
-            logger.info(f"Login successful for {email}")
             return {
                 'success': True,
                 'access_token': access_token,
@@ -678,7 +673,6 @@ def create_app():
             }
 
         except Exception as e:
-            logger.error(f"Login error: {e}")
             return {
                 'success': False,
                 'message': 'Login failed. Please check your credentials and try again.'
@@ -1104,10 +1098,14 @@ def create_app():
             if not auth_header or not auth_header.startswith('Bearer '):
                 return {'success': False, 'message': 'Authentication required'}, 401
 
+            # In a real app, decode JWT to get user email. For now, use test@example.com
+            user_email = 'test@example.com'
+
             # Get user's upcoming events (booked tickets for future events)
-            user_bookings = [b for b in ticket_bookings_db if b['user_email'] == 'test@example.com']
+            user_bookings = [b for b in ticket_bookings_db if b['user_email'] == user_email]
 
             upcoming_events = []
+            past_events = []
             from datetime import datetime
             current_date = datetime.now()
 
@@ -1115,22 +1113,26 @@ def create_app():
                 event = next((e for e in events_db if e['id'] == booking['event_id']), None)
                 if event:
                     event_date = datetime.fromisoformat(event['date'])
+                    event_data = {
+                        'booking_id': booking['id'],
+                        'event_id': booking['event_id'],
+                        'event_title': event['title'],
+                        'event_date': event['date'],
+                        'start_time': event['start_time'],
+                        'end_time': event['end_time'],
+                        'location': event['location'],
+                        'venue_name': event['venue_name'],
+                        'image': event['image'],
+                        'quantity': booking['quantity'],
+                        'total_price': booking['total_price'],
+                        'status': booking['status'],
+                        'booking_date': booking['booking_date']
+                    }
+
                     if event_date >= current_date:
-                        upcoming_events.append({
-                            'booking_id': booking['id'],
-                            'event_id': booking['event_id'],
-                            'event_title': event['title'],
-                            'event_date': event['date'],
-                            'start_time': event['start_time'],
-                            'end_time': event['end_time'],
-                            'location': event['location'],
-                            'venue_name': event['venue_name'],
-                            'image': event['image'],
-                            'quantity': booking['quantity'],
-                            'total_price': booking['total_price'],
-                            'status': booking['status'],
-                            'booking_date': booking['booking_date']
-                        })
+                        upcoming_events.append(event_data)
+                    else:
+                        past_events.append(event_data)
 
             # Get user's total spending and booking history
             total_spent = sum(booking['total_price'] for booking in user_bookings)
@@ -1146,14 +1148,49 @@ def create_app():
             from collections import Counter
             favorite_category = Counter(booked_categories).most_common(1)[0][0] if booked_categories else 'None'
 
+            # Get available events for booking (future events)
+            available_events = []
+            for event in events_db:
+                try:
+                    event_date = datetime.fromisoformat(event['date'])
+                    if event_date >= current_date:
+                        available_events.append({
+                            'id': event['id'],
+                            'title': event['title'],
+                            'date': event['date'],
+                            'start_time': event['start_time'],
+                            'end_time': event['end_time'],
+                            'location': event['location'],
+                            'venue_name': event['venue_name'],
+                            'category': event['category'],
+                            'ticket_price': event['ticket_price'],
+                            'max_attendees': event['max_attendees'],
+                            'tickets_sold': event['tickets_sold'],
+                            'image': event['image'],
+                            'description': event['description'],
+                            'rating': event['rating']
+                        })
+                except (ValueError, KeyError):
+                    continue
+
             return {
                 'success': True,
+                'user': {
+                    'email': user_email,
+                    'total_spent': total_spent,
+                    'total_tickets': total_tickets,
+                    'favorite_category': favorite_category
+                },
                 'upcoming_events': upcoming_events,
-                'total_upcoming_events': len(upcoming_events),
-                'total_bookings': len(user_bookings),
-                'total_spent': total_spent,
-                'total_tickets': total_tickets,
-                'favorite_category': favorite_category,
+                'past_events': past_events,
+                'available_events': available_events,
+                'stats': {
+                    'total_upcoming_events': len(upcoming_events),
+                    'total_past_events': len(past_events),
+                    'total_bookings': len(user_bookings),
+                    'total_spent': total_spent,
+                    'total_tickets': total_tickets
+                },
                 'recent_bookings': sorted(user_bookings, key=lambda x: x['booking_date'], reverse=True)[:5]
             }, 200
 
@@ -1334,31 +1371,39 @@ def create_app():
 
         try:
             # Log the booking request
-            logger.info("Ticket booking request received")
+            logger.info("🎫 TICKET BOOKING REQUEST RECEIVED")
             logger.info(f"Request headers: {dict(request.headers)}")
 
             # Check for Authorization header with Bearer token
             auth_header = request.headers.get('Authorization')
             if not auth_header or not auth_header.startswith('Bearer '):
-                logger.warning("Ticket booking failed - no token provided")
+                logger.warning("❌ Ticket booking failed - no token provided")
                 return {'success': False, 'message': 'Authentication required'}, 401
 
             # Get booking data from request
             data = request.get_json()
-            logger.info(f"Ticket booking data: {data}")
+            logger.info(f"📋 Booking data received: {data}")
 
             event_id = data.get('event_id')
             quantity = data.get('quantity', 1)  # Default to 1 ticket if not specified
-            user_email = data.get('user_email')  # In real app, this comes from JWT token
+            user_email = data.get('user_email', 'test@example.com')  # In real app, this comes from JWT token
 
             # Validate that event_id is provided
             if not event_id:
+                logger.warning("❌ Event ID is required")
                 return {'success': False, 'message': 'Event ID is required'}, 400
 
             # Find the event in our database
             event = next((e for e in events_db if e['id'] == event_id), None)
             if not event:
+                logger.warning(f"❌ Event not found: {event_id}")
                 return {'success': False, 'message': 'Event not found'}, 404
+
+            # Check if enough tickets are available
+            tickets_available = event['max_attendees'] - event['tickets_sold']
+            if quantity > tickets_available:
+                logger.warning(f"❌ Not enough tickets available. Requested: {quantity}, Available: {tickets_available}")
+                return {'success': False, 'message': f'Only {tickets_available} tickets available'}, 400
 
             # Calculate total cost for the tickets
             total_price = event['ticket_price'] * quantity
@@ -1367,7 +1412,7 @@ def create_app():
             booking = {
                 'id': len(ticket_bookings_db) + 1,  # Generate unique booking ID
                 'event_id': event_id,
-                'user_email': user_email or 'test@example.com',  # Use test email if none provided
+                'user_email': user_email,
                 'quantity': quantity,
                 'total_price': total_price,
                 'status': 'CONFIRMED',  # Mark as confirmed
@@ -1377,17 +1422,41 @@ def create_app():
 
             # Add booking to our database
             ticket_bookings_db.append(booking)
-            logger.info(f"Ticket booking successful: {booking}")
+
+            # Update event tickets sold
+            event['tickets_sold'] += quantity
+
+            # Console logging for successful booking
+            print("🎉" + "="*60)
+            print("🎫 TICKET BOOKING SUCCESSFUL!")
+            print(f"👤 User: {user_email}")
+            print(f"🎪 Event: {event['title']} (ID: {event_id})")
+            print(f"🎯 Quantity: {quantity} ticket(s)")
+            print(f"💰 Total Price: KES {total_price:,}")
+            print(f"📅 Event Date: {event['date']}")
+            print(f"📍 Venue: {event['venue_name']}")
+            print(f"🆔 Booking ID: {booking['id']}")
+            print(f"📊 Tickets remaining: {event['max_attendees'] - event['tickets_sold']}")
+            print("🎉" + "="*60)
+
+            logger.info(f"✅ Ticket booking successful: {booking}")
 
             # Return success response with booking details
             return {
                 'success': True,
-                'message': f'Successfully booked {quantity} ticket(s) for {event["title"]}',
-                'booking': booking
+                'message': f'🎉 Successfully booked {quantity} ticket(s) for {event["title"]}!',
+                'booking': booking,
+                'event': {
+                    'title': event['title'],
+                    'date': event['date'],
+                    'venue': event['venue_name'],
+                    'tickets_remaining': event['max_attendees'] - event['tickets_sold']
+                }
             }, 201
 
         except Exception as e:
-            logger.error(f"Ticket booking error - {str(e)}")
+            logger.error(f"❌ Ticket booking error - {str(e)}")
+            print(f"💥 BOOKING ERROR: {str(e)}")
             return {'success': False, 'message': 'Booking failed'}, 500
 
     # Route to get all tickets booked by the current user
