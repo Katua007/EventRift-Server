@@ -681,8 +681,8 @@ def create_app():
             logger.error(f"Login error: {e}")
             return {
                 'success': False,
-                'message': 'Server is temporarily unavailable. Please try again later.'
-            }, 503
+                'message': 'Login failed. Please check your credentials and try again.'
+            }, 401
     
     # Route for user registration - creates new user account
     @app.route('/auth/register', methods=['POST', 'OPTIONS'])
@@ -729,8 +729,8 @@ def create_app():
             logger.error(f"Registration error: {e}")
             return {
                 'success': False,
-                'message': 'Server is temporarily unavailable. Please try again later.'
-            }, 503
+                'message': 'Registration failed. Please check your information and try again.'
+            }, 400
     
     # Route to get current user's profile information
     @app.route('/auth/profile', methods=['GET', 'OPTIONS'])
