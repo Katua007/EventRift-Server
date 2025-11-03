@@ -689,15 +689,21 @@ def create_app():
             # Create a JWT token for the user
             access_token = create_access_token(identity=email)
             logger.info(f"Login successful for {email}")
+
+            # Extract proper name from email or use provided name
+            username = email.split('@')[0] if '@' in email else email
+            display_name = username.replace('.', ' ').replace('_', ' ').title()
+
             # Return success response with token and user info
             return {
                 'success': True,
                 'access_token': access_token,
                 'user': {
                     'email': email,
-                    'username': email.split('@')[0] if '@' in email else email,  # Extract username from email
-                    'name': email.split('@')[0] if '@' in email else email,      # Use email prefix as name
-                    'role': 'user'
+                    'username': username,
+                    'name': display_name,
+                    'role': 'user',
+                    'id': hash(email) % 10000  # Simple user ID generation
                 }
             }
         # Return error if credentials missing
@@ -854,11 +860,33 @@ def create_app():
 
         # Get all events created by this organizer
         organizer_events = [e for e in events_db if e.get('organizer_id') == 'organizer@example.com']
-        # Return dashboard data with events and count
+
+        # Calculate additional metrics for dashboard
+        total_tickets_sold = sum(event.get('tickets_sold', 0) for event in organizer_events)
+        total_revenue = sum(event.get('tickets_sold', 0) * event.get('ticket_price', 0) for event in organizer_events)
+        upcoming_events = []
+        past_events = []
+
+        from datetime import datetime
+        current_date = datetime.now()
+
+        for event in organizer_events:
+            event_date = datetime.fromisoformat(event['date'])
+            if event_date >= current_date:
+                upcoming_events.append(event)
+            else:
+                past_events.append(event)
+
+        # Return comprehensive dashboard data
         return {
             'success': True,
             'events': organizer_events,
-            'total_events': len(organizer_events)
+            'total_events': len(organizer_events),
+            'upcoming_events': len(upcoming_events),
+            'past_events': len(past_events),
+            'total_tickets_sold': total_tickets_sold,
+            'total_revenue': total_revenue,
+            'recent_events': sorted(organizer_events, key=lambda x: x['date'], reverse=True)[:5]  # Last 5 events
         }
     
     # Route to get dashboard data for vendors (service providers)
@@ -875,11 +903,29 @@ def create_app():
 
         # Get all services offered by this vendor
         vendor_services = [s for s in services_db if s.get('vendor_id') == 'vendor@example.com']
-        # Return dashboard data with services and count
+
+        # Calculate additional metrics for vendor dashboard
+        total_bookings = sum(len([b for b in ticket_bookings_db if any(s['id'] == b.get('service_id') for s in vendor_services)]) for s in vendor_services)
+        total_revenue = sum(service.get('price', 0) for service in vendor_services)
+
+        # Group services by category
+        services_by_category = {}
+        for service in vendor_services:
+            category = service.get('category', 'Other')
+            if category not in services_by_category:
+                services_by_category[category] = []
+            services_by_category[category].append(service)
+
+        # Return comprehensive vendor dashboard data
         return {
             'success': True,
             'services': vendor_services,
-            'total_services': len(vendor_services)
+            'total_services': len(vendor_services),
+            'total_bookings': total_bookings,
+            'total_revenue': total_revenue,
+            'services_by_category': services_by_category,
+            'categories_count': len(services_by_category),
+            'recent_services': sorted(vendor_services, key=lambda x: x.get('id', 0), reverse=True)[:5]  # Last 5 services
         }
 
     # Route to get all events for a specific organizer
@@ -937,15 +983,21 @@ def create_app():
             from flask_jwt_extended import create_access_token
             access_token = create_access_token(identity=email)
             logger.info(f"API login successful for {email}")
+
+            # Extract proper name from email or use provided name
+            username = email.split('@')[0] if '@' in email else email
+            display_name = username.replace('.', ' ').replace('_', ' ').title()
+
             # Return success response with token and user info
             return {
                 'success': True,
                 'access_token': access_token,
                 'user': {
                     'email': email,
-                    'username': email.split('@')[0] if '@' in email else email,
-                    'name': email.split('@')[0] if '@' in email else email,
-                    'role': 'user'
+                    'username': username,
+                    'name': display_name,
+                    'role': 'user',
+                    'id': hash(email) % 10000  # Simple user ID generation
                 }
             }
         # Return error for missing credentials
@@ -967,15 +1019,20 @@ def create_app():
 
         # Check if all required fields provided
         if email and password and name:
+            # Create proper display name and username
+            username = name.lower().replace(' ', '_')
+            display_name = name.title()
+
             # Return success response with user info (mock registration)
             return {
                 'success': True,
                 'message': 'User registered successfully',
                 'user': {
                     'email': email,
-                    'username': name,
-                    'name': name,
-                    'role': 'user'
+                    'username': username,
+                    'name': display_name,
+                    'role': 'user',
+                    'id': hash(email) % 10000  # Simple user ID generation
                 }
             }, 201
         # Return error for missing fields
@@ -1029,6 +1086,75 @@ def create_app():
     @app.route('/api/dashboard/organizer', methods=['GET', 'OPTIONS'])
     def api_organizer_dashboard():
         return organizer_dashboard()
+
+    @app.route('/api/dashboard/goer', methods=['GET', 'OPTIONS'])
+    def api_goer_dashboard():
+        # Handle preflight requests
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        try:
+            # Check if user is authenticated
+            auth_header = request.headers.get('Authorization')
+            if not auth_header or not auth_header.startswith('Bearer '):
+                return {'success': False, 'message': 'Authentication required'}, 401
+
+            # Get user's upcoming events (booked tickets for future events)
+            user_bookings = [b for b in ticket_bookings_db if b['user_email'] == 'test@example.com']
+
+            upcoming_events = []
+            from datetime import datetime
+            current_date = datetime.now()
+
+            for booking in user_bookings:
+                event = next((e for e in events_db if e['id'] == booking['event_id']), None)
+                if event:
+                    event_date = datetime.fromisoformat(event['date'])
+                    if event_date >= current_date:
+                        upcoming_events.append({
+                            'booking_id': booking['id'],
+                            'event_id': booking['event_id'],
+                            'event_title': event['title'],
+                            'event_date': event['date'],
+                            'start_time': event['start_time'],
+                            'end_time': event['end_time'],
+                            'location': event['location'],
+                            'venue_name': event['venue_name'],
+                            'image': event['image'],
+                            'quantity': booking['quantity'],
+                            'total_price': booking['total_price'],
+                            'status': booking['status'],
+                            'booking_date': booking['booking_date']
+                        })
+
+            # Get user's total spending and booking history
+            total_spent = sum(booking['total_price'] for booking in user_bookings)
+            total_tickets = sum(booking['quantity'] for booking in user_bookings)
+
+            # Get favorite categories based on bookings
+            booked_categories = []
+            for booking in user_bookings:
+                event = next((e for e in events_db if e['id'] == booking['event_id']), None)
+                if event:
+                    booked_categories.append(event.get('category', 'Other'))
+
+            from collections import Counter
+            favorite_category = Counter(booked_categories).most_common(1)[0][0] if booked_categories else 'None'
+
+            return {
+                'success': True,
+                'upcoming_events': upcoming_events,
+                'total_upcoming_events': len(upcoming_events),
+                'total_bookings': len(user_bookings),
+                'total_spent': total_spent,
+                'total_tickets': total_tickets,
+                'favorite_category': favorite_category,
+                'recent_bookings': sorted(user_bookings, key=lambda x: x['booking_date'], reverse=True)[:5]
+            }, 200
+
+        except Exception as e:
+            logger.error(f"Goer dashboard error - {str(e)}")
+            return {'success': False, 'message': 'Failed to load dashboard'}, 500
 
     @app.route('/api/dashboard/vendor', methods=['GET', 'OPTIONS'])
     def api_vendor_dashboard():
