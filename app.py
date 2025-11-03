@@ -81,8 +81,13 @@ def create_app():
            expose_headers=['Content-Type', 'Authorization'])
 
     # Initialize Flask extensions with our app
-    db.init_app(app)        # Database
-    migrate.init_app(app, db)  # Database migrations
+    try:
+        db.init_app(app)        # Database
+        migrate.init_app(app, db)  # Database migrations
+    except Exception as e:
+        logger.warning(f"Database initialization failed: {e}")
+        # Continue without database for fallback functionality
+    
     api.init_app(app)       # REST API
     jwt.init_app(app)       # JWT authentication
 
