@@ -119,8 +119,10 @@ def create_app():
     try:
         from eventrift.routes import initialize_routes
         initialize_routes(app)
-    except ImportError:
+        logger.info("Blueprint routes initialized successfully")
+    except ImportError as e:
         # Skip if routes module not available (fallback routes will be used)
+        logger.warning(f"Blueprint routes not available: {e}")
         pass
 
     # Global storage - Events data (like a simple database in memory)

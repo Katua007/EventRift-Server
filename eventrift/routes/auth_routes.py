@@ -11,33 +11,48 @@ auth_bp = Blueprint('auth', __name__)
 def login():
     """Login endpoint for frontend - authenticates users and returns JWT token"""
     try:
+        print("Auth Routes: Login request received")
+        print(f"Auth Routes: Request method: {request.method}")
+        print(f"Auth Routes: Request headers: {dict(request.headers)}")
+
         # Get the JSON data from the request body
         data = request.get_json()
+        print(f"Auth Routes: Request data: {data}")
+
         email = data.get('email')
         password = data.get('password')
+        print(f"Auth Routes: Email: {email}, Password provided: {bool(password)}")
 
         # Simple mock authentication - in real app this would check database
         if email and password:
+            print("Auth Routes: Creating JWT token")
             # Create a JWT access token for the authenticated user
             access_token = create_access_token(
                 identity=email,  # User's identity (email in this case)
                 additional_claims={'role': 'user'}  # Extra info in the token
             )
+            print(f"Auth Routes: Token created successfully: {access_token[:20]}...")
             # Return success response with token and basic user info
-            return {
+            response = {
                 'success': True,
                 'access_token': access_token,
                 'user': {
                     'email': email,
                     'role': 'user'
                 }
-            }, 200
+            }
+            print(f"Auth Routes: Login successful for {email}")
+            return response, 200
 
         # Return error if email or password missing
+        print("Auth Routes: Invalid credentials - missing email or password")
         return {'success': False, 'message': 'Invalid credentials'}, 401
 
     except Exception as e:
         # Return error if something goes wrong
+        print(f"Auth Routes: Login error - {str(e)}")
+        import traceback
+        print(f"Auth Routes: Full traceback: {traceback.format_exc()}")
         return {'success': False, 'message': str(e)}, 500
 
 # Route for user registration - accepts POST requests to create new accounts
