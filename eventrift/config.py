@@ -18,13 +18,8 @@ class Config:
     if DATABASE_URL:
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
     else:
-        # Check if we have PostgreSQL dependencies available
-        try:
-            import psycopg2
-            SQLALCHEMY_DATABASE_URI = 'postgresql://user:pass@localhost:5432/eventrift_dev'
-        except ImportError:
-            # Fall back to SQLite for local development
-            SQLALCHEMY_DATABASE_URI = 'sqlite:///eventrift.db'
+        # Always use SQLite for simplicity - no PostgreSQL dependency issues
+        SQLALCHEMY_DATABASE_URI = 'sqlite:///eventrift.db'
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
