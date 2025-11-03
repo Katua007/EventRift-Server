@@ -56,3 +56,15 @@ def initialize_routes(app):
         app.register_blueprint(data_retrieval_bp, url_prefix='/api/data')
     except ImportError:
         pass
+    
+    try:
+        from eventrift.routes.dashboard_routes import dashboard_bp
+        app.register_blueprint(dashboard_bp, url_prefix='/api')
+    except ImportError:
+        pass
+    
+    try:
+        from eventrift.routes.test_routes import test_bp
+        app.register_blueprint(test_bp, url_prefix='/api/test')
+    except ImportError:
+        pass

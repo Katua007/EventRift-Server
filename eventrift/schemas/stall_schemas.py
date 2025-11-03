@@ -1,37 +1,43 @@
 from marshmallow import fields, Schema
-from app.models.stall_booking import StallType, StallPayment, StallBooking
-# Assuming 'ma' (Marshmallow) and 'db' are initialized in app/__init__.py
-from app import ma 
-from app import db 
+from eventrift.models.stall_booking import StallType, StallPayment, StallBooking
+from eventrift.extensions import db
+try:
+    from flask_marshmallow import Marshmallow
+    ma = Marshmallow()
+except ImportError:
+    ma = None 
 
-class StallTypeSchema(ma.SQLAlchemyAutoSchema):
+class StallTypeSchema(Schema):
     """Schema for serializing StallType details."""
-    class Meta:
-        model = StallType
-        load_instance = True
-        sqla_session = db.session
-        fields = ('id', 'name', 'price', 'size', 'description')
+    id = fields.Integer()
+    name = fields.String()
+    price = fields.Float()
+    size = fields.String()
+    description = fields.String()
 
-class StallPaymentSchema(ma.SQLAlchemyAutoSchema):
+class StallPaymentSchema(Schema):
     """Schema for serializing StallPayment details."""
-    class Meta:
-        model = StallPayment
-        # Exclude sensitive M-Pesa IDs from general public view
-        exclude = ('checkout_request_id', 'merchant_request_id', 'id')
-        load_instance = True
-        sqla_session = db.session
+    status = fields.String()
+    mpesa_receipt_number = fields.String()
+    amount = fields.Float()
+    phone_number = fields.String()
+    transaction_date = fields.DateTime()
+    created_at = fields.DateTime()
 
-class StallBookingSchema(ma.SQLAlchemyAutoSchema):
+class StallBookingSchema(Schema):
     """Schema for serializing the complete StallBooking record."""
-    class Meta:
-        model = StallBooking
-        load_instance = True
-        sqla_session = db.session
-        # Include foreign keys for simplicity, assuming they are needed client-side
-        include_fk = True 
-        
+    id = fields.Integer()
+    vendor_id = fields.Integer()
+    event_id = fields.Integer()
+    stall_type_id = fields.Integer()
+    payment_id = fields.Integer()
+    status = fields.String()
+    business_name = fields.String()
+    products_offered = fields.String()
+    stall_location = fields.String()
+    created_at = fields.DateTime()
+    
     # Nested relationships for rich data retrieval
-    # These fields link the booking to its payment and stall type details.
     stall_type = fields.Nested(StallTypeSchema, only=('name', 'price', 'size'))
     payment = fields.Nested(StallPaymentSchema, only=('status', 'mpesa_receipt_number', 'amount'))
     

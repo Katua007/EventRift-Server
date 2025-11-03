@@ -14,6 +14,10 @@ class User(db.Model):
     # Vendor specific fields
     license_number = db.Column(db.String(50))
     
+    # Email verification
+    is_verified = db.Column(db.Boolean, default=False)
+    verification_token = db.Column(db.String(100))
+    
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     # Relationships (Simplified for base)
