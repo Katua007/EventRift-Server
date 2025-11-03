@@ -684,10 +684,21 @@ def create_app():
 
         # Check if email and password were provided
         if email and password:
+            # Try to use proper auth routes if available
+            try:
+                from eventrift.routes.auth_routes import login as auth_login
+                return auth_login()
+            except Exception as e:
+                logger.error(f"Auth route login failed: {e}")
+                # Continue with fallback
+            
             # Import JWT creation function
             from flask_jwt_extended import create_access_token
             # Create a JWT token for the user
-            access_token = create_access_token(identity=email)
+            access_token = create_access_token(
+                identity=email,
+                additional_claims={'role': 'user'}
+            )
             logger.info(f"Login successful for {email}")
 
             # Extract proper name from email or use provided name
@@ -717,27 +728,57 @@ def create_app():
         if request.method == 'OPTIONS':
             return '', 204
 
-        # Get registration data from request
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-        name = data.get('name') or data.get('username')
+        try:
+            # Get registration data from request
+            data = request.get_json()
+            if not data:
+                return {'success': False, 'message': 'No data provided'}, 400
+                
+            email = data.get('email')
+            password = data.get('password')
+            name = data.get('name') or data.get('username')
+            role = data.get('role', 'Goer')
 
-        # Check if all required fields are provided
-        if email and password and name:
-            # Return success response with user info (mock registration)
+            # Check if all required fields are provided
+            if not email or not password or not name:
+                return {'success': False, 'message': 'Email, password, and name are required'}, 400
+
+            # Try to use proper auth routes if available
+            try:
+                from eventrift.routes.auth_routes import register as auth_register
+                return auth_register()
+            except Exception as e:
+                logger.error(f"Auth route registration failed: {e}")
+                # Continue with fallback
+
+            # Create proper display name and username
+            username = name.lower().replace(' ', '_')
+            display_name = name.title()
+            
+            # Create JWT token for immediate login
+            from flask_jwt_extended import create_access_token
+            access_token = create_access_token(
+                identity=email,
+                additional_claims={'role': role}
+            )
+
+            # Return success response with user info and token
             return {
                 'success': True,
                 'message': 'User registered successfully',
+                'access_token': access_token,
                 'user': {
+                    'id': hash(email) % 10000,
                     'email': email,
-                    'username': name,
-                    'name': name,
-                    'role': 'user'
+                    'username': username,
+                    'name': display_name,
+                    'role': role
                 }
             }, 201
-        # Return error if required fields missing
-        return {'success': False, 'message': 'Missing required fields'}, 400
+            
+        except Exception as e:
+            logger.error(f"Registration error: {e}")
+            return {'success': False, 'message': 'Registration failed'}, 500
     
     # Route to get current user's profile information
     @app.route('/auth/profile', methods=['GET', 'OPTIONS'])
@@ -963,80 +1004,14 @@ def create_app():
     # These routes have /api/ prefix for consistency with frontend expectations
     @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
     def api_login():
-        # Log the API login request
-        logger.info(f"API login request from {request.remote_addr}")
-        logger.info(f"Request headers: {dict(request.headers)}")
-        # Handle preflight requests
-        if request.method == 'OPTIONS':
-            return '', 204
-
-        # Get login data from request
-        data = request.get_json()
-        logger.info(f"API login data: {data}")
-        # Support both email and email_or_username fields
-        email = data.get('email') or data.get('email_or_username')
-        password = data.get('password')
-
-        # Check if credentials provided
-        if email and password:
-            # Create JWT token for authentication
-            from flask_jwt_extended import create_access_token
-            access_token = create_access_token(identity=email)
-            logger.info(f"API login successful for {email}")
-
-            # Extract proper name from email or use provided name
-            username = email.split('@')[0] if '@' in email else email
-            display_name = username.replace('.', ' ').replace('_', ' ').title()
-
-            # Return success response with token and user info
-            return {
-                'success': True,
-                'access_token': access_token,
-                'user': {
-                    'email': email,
-                    'username': username,
-                    'name': display_name,
-                    'role': 'user',
-                    'id': hash(email) % 10000  # Simple user ID generation
-                }
-            }
-        # Return error for missing credentials
-        logger.warning(f"API login failed - missing credentials")
-        return {'success': False, 'message': 'Invalid credentials'}, 401
+        # Use the same login logic as the main route
+        return login()
     
     # API route for user registration with /api/ prefix
     @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
     def api_register():
-        # Handle preflight requests
-        if request.method == 'OPTIONS':
-            return '', 204
-
-        # Get registration data from request
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-        name = data.get('name') or data.get('username')
-
-        # Check if all required fields provided
-        if email and password and name:
-            # Create proper display name and username
-            username = name.lower().replace(' ', '_')
-            display_name = name.title()
-
-            # Return success response with user info (mock registration)
-            return {
-                'success': True,
-                'message': 'User registered successfully',
-                'user': {
-                    'email': email,
-                    'username': username,
-                    'name': display_name,
-                    'role': 'user',
-                    'id': hash(email) % 10000  # Simple user ID generation
-                }
-            }, 201
-        # Return error for missing fields
-        return {'success': False, 'message': 'Missing required fields'}, 400
+        # Use the same registration logic as the main route
+        return register()
     
     # Test route to verify CORS configuration is working
     @app.route('/test', methods=['GET', 'OPTIONS'])
@@ -1575,7 +1550,19 @@ def create_app():
     # Error handler for 500 Internal Server Error
     @app.errorhandler(500)
     def internal_error(error):
-        return {'success': False, 'error': 'Internal server error'}, 500
+        logger.error(f"Internal server error: {error}")
+        return {'success': False, 'error': 'Internal server error', 'message': 'Something went wrong on the server'}, 500
+    
+    # Error handler for 400 Bad Request
+    @app.errorhandler(400)
+    def bad_request(error):
+        return {'success': False, 'error': 'Bad request', 'message': 'Invalid request data'}, 400
+    
+    # Global exception handler
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        logger.error(f"Unhandled exception: {e}")
+        return {'success': False, 'error': 'Server error', 'message': 'An unexpected error occurred'}, 500
 
     # Return the configured Flask app
     return app
