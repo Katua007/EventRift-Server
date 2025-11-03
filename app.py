@@ -171,13 +171,23 @@ def create_app():
             data = request.get_json() or {}
             email = data.get('email', 'user@example.com')
             
+            # Check if user was registered offline with role
+            offline_users = __import__('json').loads(localStorage.getItem('offline_users') or '[]') if 'localStorage' in globals() else []
+            user_role = 'Goer'  # Default role
+            
+            # Simple role detection based on email/username
             username = email.split('@')[0] if '@' in email else email
+            if 'organizer' in username.lower() or 'groom' in username.lower():
+                user_role = 'Organizer'
+            elif 'vendor' in username.lower():
+                user_role = 'Vendor'
+            
             display_name = username.replace('.', ' ').replace('_', ' ').title()
 
             from flask_jwt_extended import create_access_token
             access_token = create_access_token(
                 identity=email,
-                additional_claims={'role': 'Goer'}
+                additional_claims={'role': user_role}
             )
 
             return {
@@ -187,7 +197,7 @@ def create_app():
                     'email': email,
                     'username': username,
                     'name': display_name,
-                    'role': 'Goer',
+                    'role': user_role,
                     'id': hash(email) % 10000
                 }
             }
@@ -257,6 +267,140 @@ def create_app():
         total_price = event['ticket_price'] * quantity
 
         booking = {
+            'id': len(ticket_bookings_db) + 1,
+            'event_id': event_id,
+            'user_email': user_email,
+            'quantity': quantity,
+            'total_price': total_price,
+            'status': 'CONFIRMED',
+            'booking_date': __import__('datetime').datetime.now().isoformat(),
+            'event_title': event['title']
+        }
+
+        ticket_bookings_db.append(booking)
+        event['tickets_sold'] += quantity
+
+        return {
+            'success': True,
+            'message': f'Successfully booked {quantity} ticket(s)!',
+            'booking': booking
+        }, 201
+
+    @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
+    def register():
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        try:
+            data = request.get_json() or {}
+            email = data.get('email', 'user@example.com')
+            role = data.get('role', 'Goer')
+            
+            username = email.split('@')[0] if '@' in email else email
+            display_name = username.replace('.', ' ').replace('_', ' ').title()
+
+            from flask_jwt_extended import create_access_token
+            access_token = create_access_token(
+                identity=email,
+                additional_claims={'role': role}
+            )
+
+            return {
+                'success': True,
+                'message': 'User registered successfully',
+                'access_token': access_token,
+                'user': {
+                    'email': email,
+                    'username': username,
+                    'name': display_name,
+                    'role': role,
+                    'id': hash(email) % 10000
+                }
+            }, 201
+        except Exception as e:
+            return {'success': False, 'message': 'Registration failed'}, 400
+
+    @app.route('/api/auth/logout', methods=['POST', 'OPTIONS'])
+    def logout():
+        if request.method == 'OPTIONS':
+            return '', 204
+        return {'success': True, 'message': 'Logged out successfully'}
+
+    @app.route('/user/tickets', methods=['GET', 'OPTIONS'])
+    @app.route('/api/tickets/user', methods=['GET', 'OPTIONS'])
+    def get_user_tickets():
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return {'success': False, 'message': 'Authentication required'}, 401
+
+        user_bookings = [b for b in ticket_bookings_db if b['user_email'] == 'test@example.com']
+        
+        return {
+            'success': True,
+            'tickets': user_bookings,
+            'upcoming_events': []
+        }
+
+    @app.route('/api/dashboard/goer', methods=['GET', 'OPTIONS'])
+    def goer_dashboard():
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return {'success': False, 'message': 'Authentication required'}, 401
+
+        from datetime import datetime
+        current_date = datetime.now()
+        
+        available_events = []
+        for event in events_db:
+            try:
+                event_date = datetime.fromisoformat(event['date'])
+                if event_date >= current_date:
+                    available_events.append(event)
+            except:
+                continue
+
+        return {
+            'success': True,
+            'user': {'email': 'test@example.com', 'total_spent': 0, 'total_tickets': 0},
+            'upcoming_events': [],
+            'past_events': [],
+            'available_events': available_events,
+            'stats': {
+                'total_upcoming_events': 0,
+                'total_past_events': 0,
+                'total_bookings': 0,
+                'total_spent': 0,
+                'total_tickets': 0
+            }
+        }
+
+    @app.route('/api/dashboard/organizer', methods=['GET', 'OPTIONS'])
+    def organizer_dashboard():
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return {'success': False, 'message': 'Authentication required'}, 401
+
+        organizer_events = [e for e in events_db if e.get('organizer_id') == 'organizer@example.com']
+        total_revenue = sum(e.get('tickets_sold', 0) * e.get('ticket_price', 0) for e in organizer_events)
+
+        return {
+            'success': True,
+            'events': organizer_events,
+            'total_events': len(organizer_events),
+            'total_revenue': total_revenue,
+            'total_tickets_sold': sum(e.get('tickets_sold', 0) for e in organizer_events)
+        }
+
+    return app= {
             'id': len(ticket_bookings_db) + 1,
             'event_id': event_id,
             'user_email': user_email,
