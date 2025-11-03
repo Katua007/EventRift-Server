@@ -474,6 +474,78 @@ def create_app():
             return '', 204
         return {'success': True, 'events': events_db}
 
+    @app.route('/api/dashboard/vendor', methods=['GET', 'OPTIONS'])
+    def vendor_dashboard():
+        if request.method == 'OPTIONS':
+            return '', 204
+        return {
+            'success': True,
+            'services': services_db,
+            'total_services': len(services_db),
+            'total_bookings': 0,
+            'total_revenue': 0
+        }
+
+    @app.route('/api/events/<int:event_id>/book', methods=['POST', 'OPTIONS'])
+    def book_event_ticket(event_id):
+        if request.method == 'OPTIONS':
+            return '', 204
+        return book_ticket()
+
+    @app.route('/api/services/<int:service_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+    def handle_service(service_id):
+        if request.method == 'OPTIONS':
+            return '', 204
+        
+        service = next((s for s in services_db if s['id'] == service_id), None)
+        if not service:
+            return {'success': False, 'message': 'Service not found'}, 404
+        
+        if request.method == 'GET':
+            return {'success': True, 'service': service}
+        
+        if request.method == 'PUT':
+            data = request.get_json() or {}
+            service.update(data)
+            return {'success': True, 'service': service}
+        
+        if request.method == 'DELETE':
+            services_db.remove(service)
+            return {'success': True, 'message': 'Service deleted'}
+
+    @app.route('/api/events/<int:event_id>/edit', methods=['PUT', 'OPTIONS'])
+    def edit_event(event_id):
+        if request.method == 'OPTIONS':
+            return '', 204
+        
+        event = next((e for e in events_db if e['id'] == event_id), None)
+        if not event:
+            return {'success': False, 'message': 'Event not found'}, 404
+        
+        data = request.get_json() or {}
+        event.update(data)
+        return {'success': True, 'event': event}
+
+    @app.route('/api/notifications', methods=['GET', 'POST', 'OPTIONS'])
+    def handle_notifications():
+        if request.method == 'OPTIONS':
+            return '', 204
+        
+        if request.method == 'GET':
+            return {'success': True, 'notifications': notifications_db}
+        
+        if request.method == 'POST':
+            data = request.get_json() or {}
+            notification = {
+                'id': len(notifications_db) + 1,
+                'message': data.get('message', ''),
+                'type': data.get('type', 'info'),
+                'read': False,
+                'created_at': __import__('datetime').datetime.now().isoformat()
+            }
+            notifications_db.append(notification)
+            return {'success': True, 'notification': notification}, 201
+
     return app
 
 # Create the Flask application instance
