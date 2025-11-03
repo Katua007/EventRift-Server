@@ -1,10 +1,17 @@
+# Import Flask-RESTful for API resources
 from flask_restful import Resource
+# Import Flask request object
 from flask import request
-from app.models.event_category import EventCategory
-from app.models import db
-from app.schemas.category_schema import category_schema, categories_schema
+# Import the EventCategory model
+from eventrift.models.event_category import EventCategory
+# Import database instance
+from eventrift.extensions import db
+# Import Marshmallow schemas for data validation and serialization
+from eventrift.schemas.category_schema import category_schema, categories_schema
+# Import JWT authentication decorators
 from flask_jwt_extended import jwt_required
-from app.routes.user_routes import role_required
+# Import role-based access control decorator
+from eventrift.routes.user_routes import role_required
 
 class CategoryListResource(Resource):
     def get(self):

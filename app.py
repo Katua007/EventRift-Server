@@ -1,100 +1,130 @@
+# Import Flask to create our web application
 from flask import Flask, request
+# Import CORS to allow cross-origin requests from frontend
 from flask_cors import CORS
+# Import os for environment variables and file paths
 import os
+# Import sys for system path manipulation
 import sys
+# Import logging to track what the app is doing
 import logging
+
+# Add the current directory to Python's search path so we can import our modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Configure logging
+# Set up logging to show info level messages and above
 logging.basicConfig(level=logging.INFO)
+# Create a logger for this module to track events
 logger = logging.getLogger(__name__)
 
+# Try to import our custom configuration and extensions
 try:
     from eventrift.config import Config
     from eventrift.extensions import db, migrate, api, jwt
 except ImportError:
-    # Fallback for basic Flask app
+    # If the custom modules aren't available, use basic Flask extensions as fallback
     from flask_sqlalchemy import SQLAlchemy
     from flask_migrate import Migrate
     from flask_restful import Api
     from flask_jwt_extended import JWTManager
-    
+
+    # Create a basic configuration class for the app
     class Config:
+        # Database connection string, defaults to local SQLite file
         SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///eventrift.db')
+        # Don't track modifications for performance
         SQLALCHEMY_TRACK_MODIFICATIONS = False
+        # Secret key for JWT tokens
         JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-secret')
+        # General secret key for Flask sessions
         SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret')
-    
+
+    # Create database instance
     db = SQLAlchemy()
+    # Create migration manager for database changes
     migrate = Migrate()
+    # Create REST API manager
     api = Api()
+    # Create JWT manager for authentication
     jwt = JWTManager()
 
+# Function to create and configure our Flask application
 def create_app():
+    # Create the main Flask application instance
     app = Flask(__name__)
+    # Load configuration settings from our Config class
     app.config.from_object(Config)
-    
-    # Enable CORS for frontend integration
-    # Allow multiple origins for development and production
+
+    # Enable CORS (Cross-Origin Resource Sharing) so frontend can talk to backend
+    # Allow multiple origins for development and production environments
     allowed_origins = [
-        'http://localhost:3000',      # React dev server
-        'http://localhost:5173',      # Vite dev server
+        'http://localhost:3000',      # React development server
+        'http://localhost:5173',      # Vite development server
         'http://localhost:5174',      # Alternative Vite port
-        'https://*.vercel.app',       # Vercel deployments
+        'https://*.vercel.app',       # Vercel deployment platform
         'https://event-rift-client.vercel.app',  # Production frontend
         'https://eventrift-server.onrender.com',  # Production backend
     ]
 
-    # Get frontend URL from environment or use default
+    # Get frontend URL from environment variable or use default
     frontend_url = os.environ.get('FRONTEND_URL', 'https://event-rift-client.vercel.app')
+    # Add the frontend URL to allowed origins if not already there
     if frontend_url not in allowed_origins:
         allowed_origins.append(frontend_url)
 
-    # Configure CORS with proper preflight handling
+    # Configure CORS with proper preflight handling for browser security
     CORS(app,
           origins=allowed_origins,
           methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
           allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-          supports_credentials=True,
+          supports_credentials=True,  # Allow cookies and auth headers
           expose_headers=['Content-Type', 'Authorization'])
     
-    # Add explicit OPTIONS handler for all routes
+    # Add explicit OPTIONS handler for all routes to handle CORS preflight requests
     @app.before_request
     def handle_preflight():
+        # Check if this is a preflight OPTIONS request from browser
         if request.method == "OPTIONS":
+            # Get the origin (website) making the request
             origin = request.headers.get('Origin')
+            # Log the preflight request for debugging
             logger.info(f"OPTIONS preflight request received for {request.url} from origin: {origin}")
             logger.info(f"Request headers: {dict(request.headers)}")
 
+            # Create the default OPTIONS response
             response = app.make_default_options_response()
             headers = response.headers
 
-            # Check if origin is allowed
+            # Check if the requesting origin is allowed
             if origin in allowed_origins or origin in ['https://*.vercel.app', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174']:
                 headers['Access-Control-Allow-Origin'] = origin
             else:
                 headers['Access-Control-Allow-Origin'] = frontend_url
 
+            # Set allowed methods and headers for CORS
             headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
             headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept'
             headers['Access-Control-Allow-Credentials'] = 'true'
             logger.info(f"CORS headers set: {headers}")
+            # Return empty response with 204 status (successful but no content)
             return response, 204
 
-    # Initialize extensions
-    db.init_app(app)
-    migrate.init_app(app, db)
-    api.init_app(app)
-    jwt.init_app(app)
+    # Initialize Flask extensions with our app
+    db.init_app(app)        # Database
+    migrate.init_app(app, db)  # Database migrations
+    api.init_app(app)       # REST API
+    jwt.init_app(app)       # JWT authentication
 
-    # Initialize routes
+    # Initialize routes from our routes module
     try:
         from eventrift.routes import initialize_routes
         initialize_routes(app)
     except ImportError:
+        # Skip if routes module not available (fallback routes will be used)
         pass
 
-    # Global storage - Events from frontend data
+    # Global storage - Events data (like a simple database in memory)
+    # This contains all the event information that would normally be in a real database
     events_db = [
   {
     "id": 1,
@@ -515,25 +545,32 @@ def create_app():
   }
 ]
     
+    # Empty list to store vendor services (like catering, photography, etc.)
     services_db = []
+    # Empty list to store notifications for the app
     notifications_db = []
-    
+
+    # Function to create and send notifications when events are created/updated
     def send_notification(type, data):
+        # Add a new notification to the notifications list
         notifications_db.append({
-            'id': len(notifications_db) + 1,
-            'type': type,
-            'message': f"Event '{data['title']}' has been {type.replace('_', ' ')}",
-            'timestamp': __import__('datetime').datetime.now().isoformat()
+            'id': len(notifications_db) + 1,  # Unique ID for each notification
+            'type': type,  # Type like 'event_created', 'event_updated'
+            'message': f"Event '{data['title']}' has been {type.replace('_', ' ')}",  # Human readable message
+            'timestamp': __import__('datetime').datetime.now().isoformat()  # When it was created
         })
     
+    # Route to handle getting all events or creating new events
     @app.route('/events', methods=['GET', 'POST', 'OPTIONS'])
     def handle_events():
+        # Log the incoming request for debugging
         logger.info(f"Request to /events: {request.method} from {request.remote_addr}")
         logger.info(f"Headers: {dict(request.headers)}")
+        # Handle preflight OPTIONS requests
         if request.method == 'OPTIONS':
             return '', 204
 
-        # Try to use the proper event routes if available
+        # Try to use the proper event routes from our routes module if available
         try:
             from eventrift.routes.event_routes import EventListResource
             resource = EventListResource()
@@ -547,18 +584,22 @@ def create_app():
 
         except Exception as e:
             logger.error(f"Error using EventListResource: {e}")
-            # Fallback to simple implementation
+            # Fallback to simple implementation if routes module not available
             if request.method == 'GET':
+                # Return all events from our in-memory database
                 return {'success': True, 'events': events_db}
             
             if request.method == 'POST':
+                # Check if user is authenticated (has authorization header)
                 auth_header = request.headers.get('Authorization')
                 if not auth_header:
                     return {'success': False, 'message': 'Authentication required'}, 401
-                
+
+                # Get the JSON data from the request body
                 data = request.get_json()
+                # Create a new event object with the provided data
                 new_event = {
-                    'id': len(events_db) + 1,
+                    'id': len(events_db) + 1,  # Generate unique ID
                     'title': data.get('title'),
                     'description': data.get('description'),
                     'date': data.get('date'),
@@ -568,35 +609,46 @@ def create_app():
                     'category': data.get('category'),
                     'dress_code': data.get('dress_code'),
                     'ticket_price': data.get('ticket_price'),
-                    'image': data.get('image', 'https://via.placeholder.com/400x300'),
-                    'organizer_id': 'organizer@example.com'
+                    'image': data.get('image', 'https://via.placeholder.com/400x300'),  # Default image if none provided
+                    'organizer_id': 'organizer@example.com'  # Mock organizer for now
                 }
+                # Add the new event to our events database
                 events_db.append(new_event)
+                # Send a notification about the new event
                 send_notification('event_created', new_event)
-                
+
+                # Return success response with the created event
                 return {'success': True, 'message': 'Event created successfully', 'event': new_event}, 201
     
+    # Route to handle individual event operations (get, update, delete)
     @app.route('/events/<int:event_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
     def handle_event(event_id):
+        # Handle preflight OPTIONS requests
         if request.method == 'OPTIONS':
             return '', 204
-        
+
         if request.method == 'GET':
+            # Find the event with the matching ID
             event = next((e for e in events_db if e['id'] == event_id), None)
             if not event:
                 return {'success': False, 'message': 'Event not found'}, 404
+            # Return the found event
             return {'success': True, 'event': event}
         
         if request.method == 'PUT':
+            # Check if user is authenticated
             auth_header = request.headers.get('Authorization')
             if not auth_header:
                 return {'success': False, 'message': 'Authentication required'}, 401
-            
+
+            # Find the event to update
             event = next((e for e in events_db if e['id'] == event_id), None)
             if not event:
                 return {'success': False, 'message': 'Event not found'}, 404
-            
+
+            # Get the update data from request
             data = request.get_json()
+            # Update the event with new data (keep old values if not provided)
             event.update({
                 'title': data.get('title', event['title']),
                 'description': data.get('description', event['description']),
@@ -608,50 +660,66 @@ def create_app():
                 'dress_code': data.get('dress_code', event['dress_code']),
                 'ticket_price': data.get('ticket_price', event['ticket_price'])
             })
-            
+
+            # Send notification about the update
             send_notification('event_updated', event)
+            # Return success response
             return {'success': True, 'message': 'Event updated successfully', 'event': event}
     
+    # Route for user login - creates JWT token for authentication
     @app.route('/auth/login', methods=['POST', 'OPTIONS'])
     def login():
+        # Log the login attempt for debugging
         logger.info(f"Login request from {request.remote_addr}")
         logger.info(f"Request headers: {dict(request.headers)}")
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
 
+        # Get login data from request body
         data = request.get_json()
         logger.info(f"Login data received: {data}")
         email = data.get('email')
         password = data.get('password')
 
+        # Check if email and password were provided
         if email and password:
+            # Import JWT creation function
             from flask_jwt_extended import create_access_token
+            # Create a JWT token for the user
             access_token = create_access_token(identity=email)
             logger.info(f"Login successful for {email}")
+            # Return success response with token and user info
             return {
                 'success': True,
                 'access_token': access_token,
                 'user': {
                     'email': email,
-                    'username': email.split('@')[0] if '@' in email else email,
-                    'name': email.split('@')[0] if '@' in email else email,
+                    'username': email.split('@')[0] if '@' in email else email,  # Extract username from email
+                    'name': email.split('@')[0] if '@' in email else email,      # Use email prefix as name
                     'role': 'user'
                 }
             }
+        # Return error if credentials missing
         logger.warning(f"Login failed - missing credentials")
         return {'success': False, 'message': 'Invalid credentials'}, 401
     
+    # Route for user registration - creates new user account
     @app.route('/auth/register', methods=['POST', 'OPTIONS'])
     def register():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
-            
+
+        # Get registration data from request
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
         name = data.get('name') or data.get('username')
 
+        # Check if all required fields are provided
         if email and password and name:
+            # Return success response with user info (mock registration)
             return {
                 'success': True,
                 'message': 'User registered successfully',
@@ -662,24 +730,28 @@ def create_app():
                     'role': 'user'
                 }
             }, 201
+        # Return error if required fields missing
         return {'success': False, 'message': 'Missing required fields'}, 400
     
+    # Route to get current user's profile information
     @app.route('/auth/profile', methods=['GET', 'OPTIONS'])
     def get_profile():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
 
         try:
+            # Log the profile request
             logger.info(f"Profile request from {request.remote_addr}")
             logger.info(f"Request headers: {dict(request.headers)}")
 
-            # Check for Authorization header
+            # Check for Authorization header with Bearer token
             auth_header = request.headers.get('Authorization')
             if not auth_header or not auth_header.startswith('Bearer '):
                 logger.warning("Profile failed - no token provided")
                 return {'success': False, 'message': 'No token provided'}, 401
 
-            # Mock user profile - in real app this would decode JWT
+            # Mock user profile - in real app this would decode JWT to get actual user
             logger.info("Profile successful")
             return {
                 'success': True,
@@ -695,46 +767,59 @@ def create_app():
             logger.error(f"Profile error - {str(e)}")
             return {'success': False, 'message': 'Invalid token'}, 401
     
+    # Route to handle vendor services (get all or create new)
     @app.route('/services', methods=['GET', 'POST', 'OPTIONS'])
     def handle_services():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
-        
+
         if request.method == 'GET':
+            # Return all services from our database
             return {'success': True, 'services': services_db}
-        
+
         if request.method == 'POST':
+            # Check if user is authenticated
             auth_header = request.headers.get('Authorization')
             if not auth_header:
                 return {'success': False, 'message': 'Authentication required'}, 401
-            
+
+            # Get service data from request
             data = request.get_json()
+            # Create new service object
             new_service = {
-                'id': len(services_db) + 1,
+                'id': len(services_db) + 1,  # Generate unique ID
                 'name': data.get('name'),
                 'description': data.get('description'),
                 'price': data.get('price'),
                 'category': data.get('category'),
-                'vendor_id': 'vendor@example.com'
+                'vendor_id': 'vendor@example.com'  # Mock vendor for now
             }
+            # Add service to database
             services_db.append(new_service)
-            
+
+            # Return success response
             return {'success': True, 'message': 'Service created successfully', 'service': new_service}, 201
     
+    # Route to handle individual service operations (get, update, delete)
     @app.route('/services/<int:service_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
     def handle_service(service_id):
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
-        
+
         if request.method == 'PUT':
+            # Check authentication
             auth_header = request.headers.get('Authorization')
             if not auth_header:
                 return {'success': False, 'message': 'Authentication required'}, 401
-            
+
+            # Find the service to update
             service = next((s for s in services_db if s['id'] == service_id), None)
             if not service:
                 return {'success': False, 'message': 'Service not found'}, 404
-            
+
+            # Get update data and apply changes
             data = request.get_json()
             service.update({
                 'name': data.get('name', service['name']),
@@ -742,88 +827,117 @@ def create_app():
                 'price': data.get('price', service['price']),
                 'category': data.get('category', service['category'])
             })
-            
+
+            # Return success response
             return {'success': True, 'message': 'Service updated successfully', 'service': service}
     
+    # Route to get all notifications for the app
     @app.route('/notifications', methods=['GET', 'OPTIONS'])
     def get_notifications():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
+        # Return all notifications from our database
         return {'success': True, 'notifications': notifications_db}
     
+    # Route to get dashboard data for event organizers
     @app.route('/dashboard/organizer', methods=['GET', 'OPTIONS'])
     def organizer_dashboard():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
-        
+
+        # Check if user is authenticated
         auth_header = request.headers.get('Authorization')
         if not auth_header:
             return {'success': False, 'message': 'Authentication required'}, 401
-        
+
+        # Get all events created by this organizer
         organizer_events = [e for e in events_db if e.get('organizer_id') == 'organizer@example.com']
+        # Return dashboard data with events and count
         return {
             'success': True,
             'events': organizer_events,
             'total_events': len(organizer_events)
         }
     
+    # Route to get dashboard data for vendors (service providers)
     @app.route('/dashboard/vendor', methods=['GET', 'OPTIONS'])
     def vendor_dashboard():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
 
+        # Check if user is authenticated
         auth_header = request.headers.get('Authorization')
         if not auth_header:
             return {'success': False, 'message': 'Authentication required'}, 401
 
+        # Get all services offered by this vendor
         vendor_services = [s for s in services_db if s.get('vendor_id') == 'vendor@example.com']
+        # Return dashboard data with services and count
         return {
             'success': True,
             'services': vendor_services,
             'total_services': len(vendor_services)
         }
 
+    # Route to get all events for a specific organizer
     @app.route('/organizers/events', methods=['GET', 'OPTIONS'])
     def get_organizer_events():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
 
+        # Check authentication
         auth_header = request.headers.get('Authorization')
         if not auth_header:
             return {'success': False, 'message': 'Authentication required'}, 401
 
+        # Get all events created by this organizer
         organizer_events = [e for e in events_db if e.get('organizer_id') == 'organizer@example.com']
+        # Return the events
         return {
             'success': True,
             'events': organizer_events
         }
 
 
+    # Simple route to check if server is running
     @app.route('/')
     def hello():
         return {'message': 'EventRift Server is running!'}
-    
+
+    # Health check route for monitoring
     @app.route('/health')
     def health():
         return {'status': 'healthy', 'message': 'EventRift API is running'}
     
-    # Add missing routes that should work
+    # API prefix routes (alternative URLs for the same functionality)
+    # These routes have /api/ prefix for consistency with frontend expectations
     @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
     def api_login():
+        # Log the API login request
         logger.info(f"API login request from {request.remote_addr}")
         logger.info(f"Request headers: {dict(request.headers)}")
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
 
+        # Get login data from request
         data = request.get_json()
         logger.info(f"API login data: {data}")
+        # Support both email and email_or_username fields
         email = data.get('email') or data.get('email_or_username')
         password = data.get('password')
 
+        # Check if credentials provided
         if email and password:
+            # Create JWT token for authentication
             from flask_jwt_extended import create_access_token
             access_token = create_access_token(identity=email)
             logger.info(f"API login successful for {email}")
+            # Return success response with token and user info
             return {
                 'success': True,
                 'access_token': access_token,
@@ -834,20 +948,26 @@ def create_app():
                     'role': 'user'
                 }
             }
+        # Return error for missing credentials
         logger.warning(f"API login failed - missing credentials")
         return {'success': False, 'message': 'Invalid credentials'}, 401
     
+    # API route for user registration with /api/ prefix
     @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
     def api_register():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
-            
+
+        # Get registration data from request
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
         name = data.get('name') or data.get('username')
 
+        # Check if all required fields provided
         if email and password and name:
+            # Return success response with user info (mock registration)
             return {
                 'success': True,
                 'message': 'User registered successfully',
@@ -858,12 +978,16 @@ def create_app():
                     'role': 'user'
                 }
             }, 201
+        # Return error for missing fields
         return {'success': False, 'message': 'Missing required fields'}, 400
     
+    # Test route to verify CORS configuration is working
     @app.route('/test', methods=['GET', 'OPTIONS'])
     def test_cors():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
+        # Return test data showing CORS configuration
         return {
             'success': True,
             'message': 'CORS is working!',
@@ -878,33 +1002,34 @@ def create_app():
             ]
         }
     
-    # Add API prefix routes
+    # API prefix routes - these call the same functions as the non-API routes
+    # but have /api/ prefix for frontend compatibility
     @app.route('/api/events', methods=['GET', 'POST', 'OPTIONS'])
     def api_events():
-        # Always use fallback implementation to avoid database issues
+        # Use fallback implementation to avoid database connection issues
         return handle_events()
-    
+
     @app.route('/api/events/<int:event_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
     def api_event(event_id):
-        # Always use fallback implementation to avoid database issues
+        # Use fallback implementation to avoid database connection issues
         return handle_event(event_id)
-    
+
     @app.route('/api/services', methods=['GET', 'POST', 'OPTIONS'])
     def api_services():
         return handle_services()
-    
+
     @app.route('/api/services/<int:service_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
     def api_service(service_id):
         return handle_service(service_id)
-    
+
     @app.route('/api/notifications', methods=['GET', 'OPTIONS'])
     def api_notifications():
         return get_notifications()
-    
+
     @app.route('/api/dashboard/organizer', methods=['GET', 'OPTIONS'])
     def api_organizer_dashboard():
         return organizer_dashboard()
-    
+
     @app.route('/api/dashboard/vendor', methods=['GET', 'OPTIONS'])
     def api_vendor_dashboard():
         return vendor_dashboard()
@@ -917,12 +1042,15 @@ def create_app():
     def api_test():
         return test_cors()
     
+    # API route for user logout
     @app.route('/api/auth/logout', methods=['POST', 'OPTIONS'])
     def api_logout():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
 
         try:
+            # Log the logout request
             logger.info(f"API logout request from {request.remote_addr}")
             logger.info(f"Request headers: {dict(request.headers)}")
 
@@ -934,6 +1062,7 @@ def create_app():
                 logger.info("API logout without token")
 
             logger.info("API logout successful")
+            # Return success response
             return {
                 'success': True,
                 'message': 'Logged out successfully'
@@ -942,22 +1071,25 @@ def create_app():
             logger.error(f"API logout error - {str(e)}")
             return {'success': False, 'message': 'Logout failed'}, 500
 
+    # API route to get current user's profile with /api/ prefix
     @app.route('/api/auth/profile', methods=['GET', 'OPTIONS'])
     def api_get_profile():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
 
         try:
+            # Log the profile request
             logger.info(f"API profile request from {request.remote_addr}")
             logger.info(f"Request headers: {dict(request.headers)}")
 
-            # Check for Authorization header
+            # Check for Authorization header with Bearer token
             auth_header = request.headers.get('Authorization')
             if not auth_header or not auth_header.startswith('Bearer '):
                 logger.warning("API profile failed - no token provided")
                 return {'success': False, 'message': 'No token provided'}, 401
 
-            # Mock user profile - in real app this would decode JWT
+            # Mock user profile - in real app this would decode JWT to get actual user data
             logger.info("API profile successful")
             return {
                 'success': True,
@@ -973,57 +1105,64 @@ def create_app():
             logger.error(f"API profile error - {str(e)}")
             return {'success': False, 'message': 'Invalid token'}, 401
 
-    # Ticket booking functionality
+    # Ticket booking functionality - store user's event ticket purchases
     ticket_bookings_db = []
 
+    # Route for users to book tickets for events
     @app.route('/api/tickets/book', methods=['POST', 'OPTIONS'])
     def book_ticket():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
 
         try:
+            # Log the booking request
             logger.info("Ticket booking request received")
             logger.info(f"Request headers: {dict(request.headers)}")
 
-            # Check for Authorization header
+            # Check for Authorization header with Bearer token
             auth_header = request.headers.get('Authorization')
             if not auth_header or not auth_header.startswith('Bearer '):
                 logger.warning("Ticket booking failed - no token provided")
                 return {'success': False, 'message': 'Authentication required'}, 401
 
+            # Get booking data from request
             data = request.get_json()
             logger.info(f"Ticket booking data: {data}")
 
             event_id = data.get('event_id')
-            quantity = data.get('quantity', 1)
-            user_email = data.get('user_email')  # From JWT token in real app
+            quantity = data.get('quantity', 1)  # Default to 1 ticket if not specified
+            user_email = data.get('user_email')  # In real app, this comes from JWT token
 
+            # Validate that event_id is provided
             if not event_id:
                 return {'success': False, 'message': 'Event ID is required'}, 400
 
-            # Find the event
+            # Find the event in our database
             event = next((e for e in events_db if e['id'] == event_id), None)
             if not event:
                 return {'success': False, 'message': 'Event not found'}, 404
 
-            # Calculate total price
+            # Calculate total cost for the tickets
             total_price = event['ticket_price'] * quantity
 
-            # Create booking
+            # Create booking record
             booking = {
-                'id': len(ticket_bookings_db) + 1,
+                'id': len(ticket_bookings_db) + 1,  # Generate unique booking ID
                 'event_id': event_id,
-                'user_email': user_email or 'test@example.com',
+                'user_email': user_email or 'test@example.com',  # Use test email if none provided
                 'quantity': quantity,
                 'total_price': total_price,
-                'status': 'CONFIRMED',
-                'booking_date': __import__('datetime').datetime.now().isoformat(),
-                'event_title': event['title']
+                'status': 'CONFIRMED',  # Mark as confirmed
+                'booking_date': __import__('datetime').datetime.now().isoformat(),  # Current timestamp
+                'event_title': event['title']  # Store event title for easy reference
             }
 
+            # Add booking to our database
             ticket_bookings_db.append(booking)
             logger.info(f"Ticket booking successful: {booking}")
 
+            # Return success response with booking details
             return {
                 'success': True,
                 'message': f'Successfully booked {quantity} ticket(s) for {event["title"]}',
@@ -1034,35 +1173,40 @@ def create_app():
             logger.error(f"Ticket booking error - {str(e)}")
             return {'success': False, 'message': 'Booking failed'}, 500
 
+    # Route to get all tickets booked by the current user
     @app.route('/api/tickets/user', methods=['GET', 'OPTIONS'])
     def get_user_tickets():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
 
         try:
+            # Log the request
             logger.info("User tickets request received")
             logger.info(f"Request headers: {dict(request.headers)}")
 
-            # Check for Authorization header
+            # Check for Authorization header with Bearer token
             auth_header = request.headers.get('Authorization')
             if not auth_header or not auth_header.startswith('Bearer '):
                 logger.warning("User tickets failed - no token provided")
                 return {'success': False, 'message': 'Authentication required'}, 401
 
-            # In a real app, you'd decode the JWT to get user email
-            # For now, return mock bookings
+            # In a real app, you'd decode the JWT to get the actual user email
+            # For now, return mock bookings for test@example.com
             user_bookings = [b for b in ticket_bookings_db if b['user_email'] == 'test@example.com']
 
-            # Enhance bookings with full event details for "upcoming events"
+            # Create enhanced list of upcoming events with full event details
             upcoming_events = []
             for booking in user_bookings:
+                # Find the full event details for this booking
                 event = next((e for e in events_db if e['id'] == booking['event_id']), None)
                 if event:
-                    # Check if event is in the future
+                    # Check if the event is in the future (upcoming)
                     from datetime import datetime
                     event_date = datetime.fromisoformat(event['date'])
                     current_date = datetime.now()
 
+                    # Only include events that haven't happened yet
                     if event_date >= current_date:
                         upcoming_events.append({
                             'booking_id': booking['id'],
@@ -1082,6 +1226,7 @@ def create_app():
 
             logger.info(f"User tickets retrieved: {len(user_bookings)} total bookings, {len(upcoming_events)} upcoming events")
 
+            # Return both all bookings and filtered upcoming events
             return {
                 'success': True,
                 'tickets': user_bookings,
@@ -1092,21 +1237,26 @@ def create_app():
             logger.error(f"User tickets error - {str(e)}")
             return {'success': False, 'message': 'Failed to retrieve tickets'}, 500
 
+    # Debug route to show all available API endpoints and data counts
     @app.route('/api/debug', methods=['GET', 'OPTIONS'])
     def api_debug():
+        # Handle preflight requests
         if request.method == 'OPTIONS':
             return '', 204
 
-        # Get all registered routes
+        # Collect all API endpoints from the app's URL map
         all_endpoints = []
         for rule in app.url_map.iter_rules():
+            # Only include routes that start with /api
             if rule.rule.startswith('/api'):
+                # Get HTTP methods for this route, excluding HEAD and OPTIONS
                 methods = [method for method in rule.methods if method not in ['HEAD', 'OPTIONS']]
                 all_endpoints.append(f"{'/'.join(methods)} {rule.rule}")
 
+        # Return debug information
         return {
             'success': True,
-            'endpoints': sorted(all_endpoints),
+            'endpoints': sorted(all_endpoints),  # Sort endpoints alphabetically
             'data_counts': {
                 'events': len(events_db),
                 'services': len(services_db),
@@ -1115,17 +1265,22 @@ def create_app():
             }
         }
     
+    # Error handler for 404 Not Found errors
     @app.errorhandler(404)
     def not_found(error):
         return {'success': False, 'error': 'Endpoint not found'}, 404
 
+    # Error handler for 500 Internal Server Error
     @app.errorhandler(500)
     def internal_error(error):
         return {'success': False, 'error': 'Internal server error'}, 500
 
+    # Return the configured Flask app
     return app
 
+# Create the Flask application instance
 app = create_app()
 
+# Run the app if this file is executed directly (not imported)
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
