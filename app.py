@@ -1071,9 +1071,20 @@ def create_app():
         # Use fallback implementation to avoid database connection issues
         return handle_event(event_id)
 
+    @app.route('/services', methods=['GET', 'POST', 'OPTIONS'])
     @app.route('/api/services', methods=['GET', 'POST', 'OPTIONS'])
     def api_services():
-        return handle_services()
+        # Try to use proper vendor service routes if available
+        try:
+            from eventrift.routes.vendor_routes import VendorServiceListResource
+            resource = VendorServiceListResource()
+            if request.method == 'GET':
+                return resource.get()
+            elif request.method == 'POST':
+                return resource.post()
+        except Exception as e:
+            logger.error(f"Error using VendorServiceListResource: {e}")
+            return handle_services()
 
     @app.route('/api/services/<int:service_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
     def api_service(service_id):
@@ -1083,6 +1094,7 @@ def create_app():
     def api_notifications():
         return get_notifications()
 
+    @app.route('/dashboard/organizer', methods=['GET', 'OPTIONS'])
     @app.route('/api/dashboard/organizer', methods=['GET', 'OPTIONS'])
     def api_organizer_dashboard():
         # Handle preflight requests
@@ -1094,6 +1106,13 @@ def create_app():
             auth_header = request.headers.get('Authorization')
             if not auth_header or not auth_header.startswith('Bearer '):
                 return {'success': False, 'message': 'Authentication required'}, 401
+
+            # Try to use proper dashboard routes if available
+            try:
+                from eventrift.routes.dashboard_routes import get_organizer_dashboard
+                return get_organizer_dashboard(1)  # Mock user ID
+            except ImportError:
+                pass
 
             # Get all events created by this organizer (mock data for now)
             organizer_events = [e for e in events_db if e.get('organizer_id') == 'organizer@example.com']
@@ -1226,6 +1245,7 @@ def create_app():
             logger.error(f"Goer dashboard error - {str(e)}")
             return {'success': False, 'message': 'Failed to load dashboard'}, 500
 
+    @app.route('/dashboard/vendor', methods=['GET', 'OPTIONS'])
     @app.route('/api/dashboard/vendor', methods=['GET', 'OPTIONS'])
     def api_vendor_dashboard():
         # Handle preflight requests
@@ -1237,6 +1257,13 @@ def create_app():
             auth_header = request.headers.get('Authorization')
             if not auth_header or not auth_header.startswith('Bearer '):
                 return {'success': False, 'message': 'Authentication required'}, 401
+
+            # Try to use proper dashboard routes if available
+            try:
+                from eventrift.routes.dashboard_routes import get_vendor_dashboard
+                return get_vendor_dashboard(1)  # Mock user ID
+            except ImportError:
+                pass
 
             # Get all services offered by this vendor
             vendor_services = [s for s in services_db if s.get('vendor_id') == 'vendor@example.com']
@@ -1448,6 +1475,7 @@ def create_app():
             return {'success': False, 'message': 'Booking failed'}, 500
 
     # Route to get all tickets booked by the current user
+    @app.route('/tickets/user', methods=['GET', 'OPTIONS'])
     @app.route('/api/tickets/user', methods=['GET', 'OPTIONS'])
     def get_user_tickets():
         # Handle preflight requests
