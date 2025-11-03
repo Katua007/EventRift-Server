@@ -269,8 +269,8 @@ def create_app():
         
         return {'success': False, 'message': 'Method not allowed'}, 405
 
-    @app.route('/api/events/<int:event_id>', methods=['GET', 'OPTIONS'])
-    def get_event(event_id):
+    @app.route('/api/events/<int:event_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+    def handle_event(event_id):
         if request.method == 'OPTIONS':
             return '', 204
         
@@ -278,7 +278,17 @@ def create_app():
         if not event:
             return {'success': False, 'message': 'Event not found'}, 404
         
-        return {'success': True, 'event': event}
+        if request.method == 'GET':
+            return {'success': True, 'event': event}
+        
+        if request.method == 'PUT':
+            data = request.get_json() or {}
+            event.update(data)
+            return {'success': True, 'event': event}
+        
+        if request.method == 'DELETE':
+            events_db.remove(event)
+            return {'success': True, 'message': 'Event deleted successfully'}
 
     @app.route('/api/tickets/book', methods=['POST', 'OPTIONS'])
     def book_ticket():
@@ -451,20 +461,25 @@ def create_app():
             return '', 204
         return {'success': True, 'services': services_db}
 
-    @app.route('/services', methods=['POST', 'OPTIONS'])
-    def create_service():
+    @app.route('/services', methods=['GET', 'POST', 'OPTIONS'])
+    def handle_services():
         if request.method == 'OPTIONS':
             return '', 204
-        data = request.get_json() or {}
-        service = {
-            'id': len(services_db) + 1,
-            'name': data.get('name'),
-            'category': data.get('category'),
-            'price': data.get('price'),
-            'vendor_id': data.get('vendor_id', 9905)
-        }
-        services_db.append(service)
-        return {'success': True, 'service': service}, 201
+        
+        if request.method == 'GET':
+            return {'success': True, 'services': services_db}
+        
+        if request.method == 'POST':
+            data = request.get_json() or {}
+            service = {
+                'id': len(services_db) + 1,
+                'name': data.get('name'),
+                'category': data.get('category'),
+                'price': data.get('price'),
+                'vendor_id': data.get('vendor_id', 9905)
+            }
+            services_db.append(service)
+            return {'success': True, 'service': service}, 201
 
     @app.route('/api/organizer/events', methods=['GET', 'OPTIONS'])
     @app.route('/events/organizer', methods=['GET', 'OPTIONS'])
@@ -513,18 +528,7 @@ def create_app():
             services_db.remove(service)
             return {'success': True, 'message': 'Service deleted'}
 
-    @app.route('/api/events/<int:event_id>/edit', methods=['PUT', 'OPTIONS'])
-    def edit_event(event_id):
-        if request.method == 'OPTIONS':
-            return '', 204
-        
-        event = next((e for e in events_db if e['id'] == event_id), None)
-        if not event:
-            return {'success': False, 'message': 'Event not found'}, 404
-        
-        data = request.get_json() or {}
-        event.update(data)
-        return {'success': True, 'event': event}
+
 
     @app.route('/api/notifications', methods=['GET', 'POST', 'OPTIONS'])
     def handle_notifications():
