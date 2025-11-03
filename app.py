@@ -651,7 +651,7 @@ def create_app():
             return auth_login()
         except Exception as e:
             logger.error(f"Auth routes not available, using fallback: {e}")
-            # Fallback implementation
+            # Fallback implementation - always return success for now
             try:
                 data = request.get_json() or {}
                 email = data.get('email') or data.get('email_or_username', 'user@example.com')
