@@ -115,9 +115,13 @@ events_db = [
     }
 ]
 
-services_db = []
+services_db = [
+    {'id': 1, 'name': 'Wedding Photography', 'category': 'Photography', 'price': 50000, 'vendor_id': 9905},
+    {'id': 2, 'name': 'Event Catering', 'category': 'Catering', 'price': 25000, 'vendor_id': 9905}
+]
 notifications_db = []
 ticket_bookings_db = []
+users_db = {}
 
 # Function to create and configure our Flask application
 def create_app():
@@ -171,21 +175,25 @@ def create_app():
             data = request.get_json() or {}
             email = data.get('email', 'user@example.com')
             
-            # Simple role detection based on email/username
             username = email.split('@')[0] if '@' in email else email
-            user_role = 'Goer'  # Default role
             
-            # Check email and username for role indicators
-            email_lower = email.lower()
-            username_lower = username.lower()
-            
-            if ('organizer' in email_lower or 'organizer' in username_lower or 
-                'groom' in email_lower or 'groom' in username_lower):
-                user_role = 'Organizer'
-            elif ('vendor' in email_lower or 'vendor' in username_lower):
-                user_role = 'Vendor'
-            
-            display_name = username.replace('.', ' ').replace('_', ' ').title()
+            # Check if user exists in our database first
+            if email in users_db:
+                user_data = users_db[email]
+                user_role = user_data['role']
+                display_name = user_data['name']
+            else:
+                # Fallback role detection for existing users
+                user_role = 'Goer'
+                email_lower = email.lower()
+                username_lower = username.lower()
+                
+                if ('organizer' in email_lower or 'organizer' in username_lower):
+                    user_role = 'Organizer'
+                elif ('vendor' in email_lower or 'vendor' in username_lower):
+                    user_role = 'Vendor'
+                
+                display_name = username.replace('.', ' ').replace('_', ' ').title()
 
             from flask_jwt_extended import create_access_token
             access_token = create_access_token(
@@ -302,6 +310,15 @@ def create_app():
             username = email.split('@')[0] if '@' in email else email
             display_name = username.replace('.', ' ').replace('_', ' ').title()
 
+            # Store user in our database
+            users_db[email] = {
+                'email': email,
+                'username': username,
+                'name': display_name,
+                'role': role,
+                'id': hash(email) % 10000
+            }
+
             from flask_jwt_extended import create_access_token
             access_token = create_access_token(
                 identity=email,
@@ -402,6 +419,37 @@ def create_app():
             'total_revenue': total_revenue,
             'total_tickets_sold': sum(e.get('tickets_sold', 0) for e in organizer_events)
         }
+
+    @app.route('/api/vendor/services', methods=['GET', 'OPTIONS'])
+    @app.route('/services/vendor', methods=['GET', 'OPTIONS'])
+    @app.route('/user/services', methods=['GET', 'OPTIONS'])
+    def get_vendor_services():
+        if request.method == 'OPTIONS':
+            return '', 204
+        return {'success': True, 'services': services_db}
+
+    @app.route('/services', methods=['POST', 'OPTIONS'])
+    def create_service():
+        if request.method == 'OPTIONS':
+            return '', 204
+        data = request.get_json() or {}
+        service = {
+            'id': len(services_db) + 1,
+            'name': data.get('name'),
+            'category': data.get('category'),
+            'price': data.get('price'),
+            'vendor_id': data.get('vendor_id', 9905)
+        }
+        services_db.append(service)
+        return {'success': True, 'service': service}, 201
+
+    @app.route('/api/organizer/events', methods=['GET', 'OPTIONS'])
+    @app.route('/events/organizer', methods=['GET', 'OPTIONS'])
+    @app.route('/user/events', methods=['GET', 'OPTIONS'])
+    def get_organizer_events():
+        if request.method == 'OPTIONS':
+            return '', 204
+        return {'success': True, 'events': events_db}
 
     return app
 
