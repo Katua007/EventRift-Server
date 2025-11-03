@@ -244,6 +244,29 @@ def create_app():
         if request.method == 'GET':
             return {'success': True, 'events': events_db}
         
+        if request.method == 'POST':
+            data = request.get_json() or {}
+            new_event = {
+                'id': len(events_db) + 1,
+                'title': data.get('title', ''),
+                'date': data.get('date', ''),
+                'start_time': data.get('start_time', ''),
+                'end_time': data.get('end_time', ''),
+                'venue_name': data.get('venue_name', ''),
+                'address': data.get('address', ''),
+                'category': data.get('category', ''),
+                'theme': data.get('theme', ''),
+                'description': data.get('description', ''),
+                'ticket_price': int(data.get('ticket_price', 0)),
+                'early_bird_price': int(data.get('early_bird_price', 0)),
+                'max_attendees': int(data.get('max_attendees', 0)),
+                'tickets_sold': 0,
+                'rating': 0,
+                'reviews_count': 0
+            }
+            events_db.append(new_event)
+            return {'success': True, 'event': new_event}, 201
+        
         return {'success': False, 'message': 'Method not allowed'}, 405
 
     @app.route('/api/events/<int:event_id>', methods=['GET', 'OPTIONS'])
